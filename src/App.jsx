@@ -195,7 +195,8 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
 
     setLoadingAI(true);
     try {
-      const res = await fetch('http://localhost:8000/api/generate-rfp', {
+      const apiHost = window.location.hostname;
+      const res = await fetch(`http://${apiHost}:8000/api/generate-rfp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
