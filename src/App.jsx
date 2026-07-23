@@ -195,7 +195,7 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
 
     setLoadingAI(true);
     try {
-      const apiBase = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000`;
+      const apiBase = import.meta.env.VITE_API_URL || '';
       const res = await fetch(`${apiBase}/api/generate-rfp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
