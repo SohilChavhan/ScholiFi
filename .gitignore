@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
+.env
+.env.*
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
