@@ -1,37 +1,73 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, Wallet, Store, CheckCircle, FileText, Building, LineChart as ChartIcon, UserPlus, LogOut, Sparkles, X } from 'lucide-react'; // Added 'X' icon for the close button
+import React, { useEffect, useState } from 'react';
+import { LayoutDashboard, Wallet, Store, CheckCircle, FileText, Building, LineChart as ChartIcon, UserPlus, LogOut, Sparkles, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { QRCodeSVG } from 'qrcode.react'; // --- NEW IMPORT ---
-// --- MOCK DATA ---
-const INITIAL_PRODUCTS = {
-  Tech: [
-    { id: 't1', name: 'Interactive Smartboard', price: 150000, vendor: 'EduTech' },
-    { id: 't2', name: 'Student Chromebook', price: 25000, vendor: 'TechNova' },
-  ],
-  Furniture: [
-    { id: 'f1', name: 'Ergonomic Desk', price: 8500, vendor: 'WoodWorks' },
-    { id: 'f2', name: 'Lab Stool', price: 2200, vendor: 'ChemCo' },
-  ],
-  Stationary: [
-    { id: 's1', name: 'Whiteboard Markers (Box of 50)', price: 1200, vendor: 'OfficePlus' },
-    { id: 's2', name: 'Exam Answer Booklets (1000)', price: 15000, vendor: 'PrintPros' },
-  ]
-};
+import { QRCodeSVG } from 'qrcode.react';
+import { supabase } from './supabaseClient'; // Connected to your Supabase client
 
-const INITIAL_FINANCE_DATA = [
-  { name: 'Computer Science', budget: 500000, spent: 420000 },
-  { name: 'Chemistry', budget: 300000, spent: 150000 },
-  { name: 'Administration', budget: 200000, spent: 190000 },
-  { name: 'Sports', budget: 150000, spent: 50000 },
-];
 const COLORS = ['#2D4A3E', '#D4AF37', '#4A6B5D', '#E5C158'];
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profRequests, setProfRequests] = useState([]);
-  const [vendorProducts, setVendorProducts] = useState(INITIAL_PRODUCTS);
-  const [financeData, setFinanceData] = useState(INITIAL_FINANCE_DATA);
+  const [vendorProducts, setVendorProducts] = useState({ Tech: [], Furniture: [], Stationary: [] });
+  const [financeData, setFinanceData] = useState([]);
+
+  // --- INITIAL DATA FETCH FROM SUPABASE ---
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  async function fetchInitialData() {
+    // 1. Fetch Departments (Finance Data)
+    const { data: deptData, error: deptError } = await supabase.from('departments').select('*');
+    if (deptError) {
+      console.error('Error fetching departments:', deptError);
+    } else if (deptData) {
+      setFinanceData(deptData);
+    }
+
+    // 2. Fetch Products
+    const { data: prodData, error: prodError } = await supabase.from('products').select('*');
+    if (prodError) {
+      console.error('Error fetching products:', prodError);
+    } else if (prodData) {
+      // Group products by category to match the app's structural expectations
+      const grouped = { Tech: [], Furniture: [], Stationary: [] };
+      prodData.forEach(p => {
+        const cat = p.category || 'Tech';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(p);
+      });
+      setVendorProducts(grouped);
+    }
+
+    // 3. Fetch Budget Requests
+    const { data: reqData, error: reqError } = await supabase.from('budget_requests').select('*');
+    if (reqError) {
+      console.error('Error fetching budget requests:', reqError);
+    } else if (reqData) {
+      // Map database schema fields to frontend state properties
+      const formattedReqs = reqData.map(r => ({
+        id: r.id,
+        profId: r.prof_id,
+        department: r.department_name,
+        quantity: r.quantity,
+        productId: r.product_id,
+        productName: 'Requested Item', // Can be enriched from product catalog if needed
+        vendor: r.vendor_id,
+        customNotes: r.custom_notes,
+        rfp: r.rfp_text,
+        status: r.status,
+        budgetStatus: r.verified_cost ? {
+          verifiedCost: r.verified_cost,
+          remainingBudget: 0,
+          isSufficient: true
+        } : null
+      }));
+      setProfRequests(formattedReqs);
+    }
+  }
 
   // --- LOGIN LOGIC ---
   const handleLogin = (regNumber) => {
@@ -177,15 +213,13 @@ function NavItem({ icon, label, isActive, onClick }) {
 function RequestView({ user, requests, setRequests, financeData, vendorProducts }) {
   const allProducts = Object.values(vendorProducts).flat();
 
-  const [department, setDepartment] = useState('Computer Science');
+  const [department, setDepartment] = useState(financeData[0]?.name || 'Computer Science');
   const [selectedProductId, setSelectedProductId] = useState(allProducts[0]?.id || '');
   const [quantity, setQuantity] = useState('');
   const [desc, setDesc] = useState('');
   const [rfpText, setRfpText] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
   const [checkingId, setCheckingId] = useState(null);
-
-  // --- NEW: State for the Payment Modal ---
   const [checkoutReq, setCheckoutReq] = useState(null);
 
   const currentProduct = allProducts.find(p => p.id === selectedProductId);
@@ -208,70 +242,92 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
       const data = await res.json();
       setRfpText(data.rfp_text);
     } catch (err) {
-      setRfpText("Error generating RFP. Ensure main.py backend is running.");
+      setRfpText("Error generating RFP. Ensure backend is running.");
     }
     setLoadingAI(false);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!currentProduct || !quantity) return;
 
-    setRequests([...requests, {
-      id: `REQ-${Math.floor(Math.random() * 1000)}`,
-      profId: user.id,
-      department,
+    const newRequestPayload = {
+      prof_id: user.id,
+      department_name: department,
+      product_id: currentProduct.id,
+      vendor_id: currentProduct.vendor_id,
       quantity: parseInt(quantity),
-      productId: currentProduct.id,
-      productName: currentProduct.name,
-      vendor: currentProduct.vendor,
-      customNotes: desc,
-      rfp: rfpText,
-      status: 'Pending',
-      budgetStatus: null
-    }]);
-    setQuantity('');
-    setDesc('');
-    setRfpText('');
+      custom_notes: desc,
+      rfp_text: rfpText,
+      status: 'Pending'
+    };
+
+    const { data, error } = await supabase.from('budget_requests').insert([newRequestPayload]).select();
+
+    if (error) {
+      console.error('Error inserting request:', error);
+      alert('Failed to submit request: ' + error.message);
+    } else if (data) {
+      const created = data[0];
+      setRequests([...requests, {
+        id: created.id,
+        profId: created.prof_id,
+        department: created.department_name,
+        quantity: created.quantity,
+        productId: created.product_id,
+        productName: currentProduct.name,
+        vendor: created.vendor_id,
+        customNotes: created.custom_notes,
+        rfp: created.rfp_text,
+        status: created.status,
+        budgetStatus: null
+      }]);
+      setQuantity('');
+      setDesc('');
+      setRfpText('');
+    }
   };
 
-  const handleCheckBudget = (req) => {
+  const handleCheckBudget = async (req) => {
     setCheckingId(req.id);
 
-    setTimeout(() => {
-      const product = allProducts.find(p => p.id === req.productId);
-
-      if (!product) {
-        alert("Product no longer exists in vendor catalog.");
-        setCheckingId(null);
-        return;
-      }
-
-      const verifiedCost = product.price * req.quantity;
-      const deptInfo = financeData.find(d => d.name === req.department);
-      const remainingBudget = deptInfo ? (deptInfo.budget - deptInfo.spent) : 0;
-      const isSufficient = verifiedCost <= remainingBudget;
-
-      setRequests(requests.map(r => r.id === req.id ? {
-        ...r,
-        budgetStatus: { verifiedCost, remainingBudget, isSufficient }
-      } : r));
-
+    const product = allProducts.find(p => p.id === req.productId);
+    if (!product) {
+      alert("Product no longer exists in vendor catalog.");
       setCheckingId(null);
-    }, 600);
+      return;
+    }
+
+    const verifiedCost = product.price * req.quantity;
+    const deptInfo = financeData.find(d => d.name === req.department);
+    const remainingBudget = deptInfo ? (deptInfo.budget - (deptInfo.spent || 0)) : 0;
+    const isSufficient = verifiedCost <= remainingBudget;
+
+    // Update in Supabase
+    await supabase.from('budget_requests').update({ verified_cost: verifiedCost }).eq('id', req.id);
+
+    setRequests(requests.map(r => r.id === req.id ? {
+      ...r,
+      budgetStatus: { verifiedCost, remainingBudget, isSufficient }
+    } : r));
+
+    setCheckingId(null);
   };
 
-  const handleApprove = (id) => {
-    setRequests(requests.map(r => r.id === id ? { ...r, status: 'Approved (Sent to Vendor)' } : r));
+  const handleApprove = async (id) => {
+    const newStatus = 'Approved (Sent to Vendor)';
+    await supabase.from('budget_requests').update({ status: newStatus }).eq('id', id);
+    setRequests(requests.map(r => r.id === id ? { ...r, status: newStatus } : r));
   };
 
-  // --- NEW: Open Modal instead of Alert ---
   const handleBuy = (req) => {
     setCheckoutReq(req);
   };
 
-  // --- NEW: Confirm Payment Success ---
-  const confirmPayment = () => {
-    setRequests(requests.map(r => r.id === checkoutReq.id ? { ...r, status: 'Paid & Ordered' } : r));
+  const confirmPayment = async () => {
+    const newStatus = 'Paid & Ordered';
+    await supabase.from('budget_requests').update({ status: newStatus }).eq('id', checkoutReq.id);
+    
+    setRequests(requests.map(r => r.id === checkoutReq.id ? { ...r, status: newStatus } : r));
     setCheckoutReq(null);
   };
 
@@ -290,7 +346,7 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
               <select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="w-full border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]">
                 {allProducts.map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.name}{p.brand ? `, ${p.brand}` : ''} — By {p.vendor} (₹{p.price.toLocaleString()}/ea)
+                    {p.name}{p.brand ? `, ${p.brand}` : ''} — By {p.vendor_id || p.vendor} (₹{p.price.toLocaleString()}/ea)
                   </option>
                 ))}
               </select>
@@ -314,7 +370,7 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
 
             {(rfpText || !loadingAI) && (
               <textarea
-                placeholder="Your Request for Proposal (RFP) text will appear here. You can edit it or type it manually..."
+                placeholder="Your Request for Proposal (RFP) text will appear here..."
                 value={rfpText}
                 onChange={e => setRfpText(e.target.value)}
                 className="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] min-h-[150px]"
@@ -345,14 +401,12 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
                   </div>
 
                   <div className="flex flex-col space-y-2 text-right">
-
                     {user.role === 'Admin' && req.status === 'Pending' && (
                       <button onClick={() => handleApprove(req.id)} className="bg-[#2D4A3E] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#1E332A] transition-colors">
                         Approve & Forward
                       </button>
                     )}
 
-                    {/* Trigger the Modal */}
                     {user.role === 'Admin' && req.status === 'Approved (Sent to Vendor)' && (
                       <button onClick={() => handleBuy(req)} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors shadow-sm">
                         Complete Purchase
@@ -389,11 +443,9 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
         )}
       </div>
 
-      {/* --- NEW: THE QR PAYMENT MODAL --- */}
       {checkoutReq && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white p-8 rounded-3xl shadow-2xl w-[400px] relative animate-in zoom-in-95 duration-200">
-
             <button onClick={() => setCheckoutReq(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-800">
               <X className="w-6 h-6" />
             </button>
@@ -403,12 +455,8 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
               <p className="text-slate-500 mb-6">Scan to pay with any UPI App</p>
 
               <div className="bg-slate-50 p-6 rounded-2xl inline-block border border-slate-200 shadow-inner mb-6">
-                {/* 
-                  This creates a standard Indian UPI string. 
-                  Replace 'your_actual_vpa@upi' with your real UPI ID if you want real money to transfer! 
-                */}
                 <QRCodeSVG
-                  value={`upi://pay?pa=7770011695@ybl&pn=ScholiFi%20Vendor&am=${checkoutReq.budgetStatus?.verifiedCost}&cu=INR`}
+                  value={`upi://pay?pa=7770011695@ybl&pn=ScholiFi%20Vendor&am=${checkoutReq.budgetStatus?.verifiedCost || 0}&cu=INR`}
                   size={200}
                   level={"H"}
                   fgColor="#2D4A3E"
@@ -427,7 +475,7 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
                 <div className="w-full h-px bg-slate-200 my-2" />
                 <div className="flex justify-between text-lg font-bold text-[#2D4A3E]">
                   <span>Total Cost:</span>
-                  <span>₹{checkoutReq.budgetStatus?.verifiedCost.toLocaleString()}</span>
+                  <span>₹{(checkoutReq.budgetStatus?.verifiedCost || 0).toLocaleString()}</span>
                 </div>
               </div>
 
@@ -441,104 +489,118 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
           </div>
         </div>
       )}
-
     </div>
   );
 }
+
 // --- VENDOR PORTAL VIEW ---
 function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, setRequests }) {
   const [activeCategory, setActiveCategory] = useState('Tech');
-
-  // State for the new item form
   const [newItemName, setNewItemName] = useState('');
   const [newItemPrice, setNewItemPrice] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('Tech');
   const [newItemBrand, setNewItemBrand] = useState('');
-
-  // --- NEW: State for the Direct Purchase Modal ---
   const [checkoutData, setCheckoutData] = useState(null);
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     if (!newItemName || !newItemPrice || !newItemBrand) {
       return alert("Please enter a name, brand, and price.");
     }
 
-    const newProduct = {
-      id: `prod-${Math.floor(Math.random() * 10000)}`,
+    const payload = {
+      category: newItemCategory,
       name: newItemName,
       brand: newItemBrand,
       price: parseFloat(newItemPrice),
-      vendor: user.id
+      vendor_id: user.id
     };
 
-    setVendorProducts({
-      ...vendorProducts,
-      [newItemCategory]: [...vendorProducts[newItemCategory], newProduct]
-    });
+    const { data, error } = await supabase.from('products').insert([payload]).select();
 
-    setNewItemName('');
-    setNewItemPrice('');
-    setNewItemBrand('');
+    if (error) {
+      console.error('Error adding product:', error);
+      alert('Failed to add product: ' + error.message);
+    } else if (data) {
+      const created = data[0];
+      const categoryList = vendorProducts[newItemCategory] || [];
+      setVendorProducts({
+        ...vendorProducts,
+        [newItemCategory]: [...categoryList, created]
+      });
+
+      setNewItemName('');
+      setNewItemPrice('');
+      setNewItemBrand('');
+    }
   };
 
-  const handleRemoveProduct = (category, productId) => {
+  const handleRemoveProduct = async (category, productId) => {
+    await supabase.from('products').delete().eq('id', productId);
     setVendorProducts({
       ...vendorProducts,
       [category]: vendorProducts[category].filter(p => p.id !== productId)
     });
   };
 
-  // --- UPDATED: Open Modal Instead of Instant Buy ---
   const handleDirectPurchase = (prod) => {
     const qtyStr = window.prompt(`Direct Purchase: How many units of ${prod.name} would you like to buy?`);
-    if (!qtyStr) return; // User cancelled
+    if (!qtyStr) return;
 
     const qty = parseInt(qtyStr);
     if (isNaN(qty) || qty <= 0) return alert("Please enter a valid number.");
 
     const totalCost = qty * prod.price;
-
-    // Set the state to open the QR modal
-    setCheckoutData({
-      prod,
-      qty,
-      totalCost
-    });
+    setCheckoutData({ prod, qty, totalCost });
   };
 
-  // --- NEW: Confirm Direct Payment ---
-  const confirmDirectPayment = () => {
-    setRequests([...(requests || []), {
-      id: `DIR-${Math.floor(Math.random() * 1000)}`,
-      profId: user.id,
-      department: 'Administration',
+  const confirmDirectPayment = async () => {
+    const newRequestPayload = {
+      prof_id: user.id,
+      department_name: 'Administration',
+      product_id: checkoutData.prod.id,
+      vendor_id: checkoutData.prod.vendor_id || checkoutData.prod.vendor,
       quantity: checkoutData.qty,
-      productId: checkoutData.prod.id,
-      productName: checkoutData.prod.name,
-      vendor: checkoutData.prod.vendor,
-      customNotes: 'Purchased directly from Vendor Portal by Admin',
-      rfp: 'N/A - Direct Admin Purchase',
+      custom_notes: 'Purchased directly from Vendor Portal by Admin',
+      rfp_text: 'N/A - Direct Admin Purchase',
       status: 'Paid & Ordered',
-      budgetStatus: {
-        verifiedCost: checkoutData.totalCost,
-        remainingBudget: 200000,
-        isSufficient: true
-      }
-    }]);
+      verified_cost: checkoutData.totalCost
+    };
 
-    alert(`Success! Purchased ${checkoutData.qty}x ${checkoutData.prod.name}. The record has been added to the Budget Requests tab.`);
-    setCheckoutData(null); // Close the modal
+    const { data, error } = await supabase.from('budget_requests').insert([newRequestPayload]).select();
+
+    if (error) {
+      console.error('Error recording direct purchase:', error);
+    } else if (data) {
+      const created = data[0];
+      setRequests([...(requests || []), {
+        id: created.id,
+        profId: created.prof_id,
+        department: created.department_name,
+        quantity: created.quantity,
+        productId: created.product_id,
+        productName: checkoutData.prod.name,
+        vendor: created.vendor_id,
+        customNotes: created.custom_notes,
+        rfp: created.rfp_text,
+        status: created.status,
+        budgetStatus: {
+          verifiedCost: checkoutData.totalCost,
+          remainingBudget: 200000,
+          isSufficient: true
+        }
+      }]);
+    }
+
+    alert(`Success! Purchased ${checkoutData.qty}x ${checkoutData.prod.name}.`);
+    setCheckoutData(null);
   };
 
   return (
     <div className="space-y-6 relative">
-
-      {/* ADD NEW PRODUCT SECTION (Only visible to Vendors) */}
       {user.role === 'Vendor' && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Add New Catalog Item</h3>
           <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-
             <select
               value={newItemCategory}
               onChange={e => setNewItemCategory(e.target.value)}
@@ -582,7 +644,6 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
         </div>
       )}
 
-      {/* PRODUCT LISTING SECTION */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex space-x-4 mb-6 border-b pb-4">
           {Object.keys(vendorProducts).map(cat => (
@@ -596,7 +657,7 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
           ))}
         </div>
 
-        {vendorProducts[activeCategory].length === 0 ? (
+        {(!vendorProducts[activeCategory] || vendorProducts[activeCategory].length === 0) ? (
           <p className="text-slate-500 text-sm">No items in this category.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -606,13 +667,12 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
                   <h4 className="font-bold text-[#2D4A3E]">
                     {prod.name}{prod.brand ? `, ${prod.brand}` : ''}
                   </h4>
-                  <p className="text-sm text-slate-500">By {prod.vendor}</p>
+                  <p className="text-sm text-slate-500">By {prod.vendor_id || prod.vendor}</p>
                 </div>
                 <div className="text-right flex flex-col items-end">
                   <p className="font-bold text-[#D4AF37] text-lg">₹{prod.price.toLocaleString()}</p>
 
-                  {/* Remove button only shows if the logged-in user is the vendor who created the item */}
-                  {user.role === 'Vendor' && prod.vendor === user.id && (
+                  {user.role === 'Vendor' && (prod.vendor_id === user.id || prod.vendor === user.id) && (
                     <button
                       onClick={() => handleRemoveProduct(activeCategory, prod.id)}
                       className="text-xs mt-1 text-red-500 border border-red-500 px-3 py-1 rounded hover:bg-red-50 transition-colors font-medium"
@@ -621,7 +681,6 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
                     </button>
                   )}
 
-                  {/* Direct Buy button for Admins */}
                   {user.role === 'Admin' && (
                     <button
                       onClick={() => handleDirectPurchase(prod)}
@@ -637,11 +696,9 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
         )}
       </div>
 
-      {/* --- NEW: THE QR PAYMENT MODAL FOR DIRECT BUY --- */}
       {checkoutData && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white p-8 rounded-3xl shadow-2xl w-[400px] relative animate-in zoom-in-95 duration-200">
-
             <button onClick={() => setCheckoutData(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-800">
               <X className="w-6 h-6" />
             </button>
@@ -666,7 +723,7 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
                 </div>
                 <div className="flex justify-between text-sm text-slate-600">
                   <span>Vendor ID:</span>
-                  <span className="font-medium text-slate-800">{checkoutData.prod.vendor}</span>
+                  <span className="font-medium text-slate-800">{checkoutData.prod.vendor_id || checkoutData.prod.vendor}</span>
                 </div>
                 <div className="w-full h-px bg-slate-200 my-2" />
                 <div className="flex justify-between text-lg font-bold text-[#2D4A3E]">
@@ -685,7 +742,6 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
           </div>
         </div>
       )}
-
     </div>
   );
 }
@@ -695,7 +751,7 @@ function FinanceAnalyzerView({ financeData }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-96">
-        <h3 className="font-bold text-[#2D4A3E] mb-4">Budget vs Spent Status (Demo Graph)</h3>
+        <h3 className="font-bold text-[#2D4A3E] mb-4">Budget vs Spent Status</h3>
         <ResponsiveContainer width="100%" height="85%">
           <BarChart data={financeData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -710,7 +766,7 @@ function FinanceAnalyzerView({ financeData }) {
       </div>
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-96">
-        <h3 className="font-bold text-[#2D4A3E] mb-4">Total Spending Distribution (Demo Graph)</h3>
+        <h3 className="font-bold text-[#2D4A3E] mb-4">Total Spending Distribution</h3>
         <ResponsiveContainer width="100%" height="85%">
           <PieChart>
             <Pie data={financeData} dataKey="spent" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
@@ -739,10 +795,13 @@ function AdminDashboard({ requests, financeData, setFinanceData }) {
     setNewBudget(dept.budget);
   };
 
-  const handleSave = (deptName) => {
+  const handleSave = async (deptName) => {
+    const updatedVal = parseInt(newBudget);
+    await supabase.from('departments').update({ budget: updatedVal }).eq('name', deptName);
+
     const updated = financeData.map(d => {
       if (d.name === deptName) {
-        return { ...d, budget: parseInt(newBudget) || d.budget };
+        return { ...d, budget: updatedVal || d.budget };
       }
       return d;
     });
@@ -752,8 +811,6 @@ function AdminDashboard({ requests, financeData, setFinanceData }) {
 
   return (
     <div className="space-y-8">
-
-      {/* --- NEW: Department Budget Manager --- */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex items-center space-x-3 mb-6">
           <div className="bg-[#D4AF37]/20 p-2 rounded-lg">
@@ -764,18 +821,18 @@ function AdminDashboard({ requests, financeData, setFinanceData }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {financeData.map(dept => {
-            const percent = (dept.spent / dept.budget) * 100;
+            const spentVal = dept.spent || 0;
+            const percent = (spentVal / dept.budget) * 100;
             const isEditing = editingDept === dept.name;
 
             return (
               <div key={dept.name} className="border border-slate-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow bg-gradient-to-br from-white to-slate-50 relative overflow-hidden group">
-                {/* Decorative side bar */}
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-[#2D4A3E] group-hover:bg-[#D4AF37] transition-colors"></div>
 
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h4 className="font-bold text-[#2D4A3E] text-lg">{dept.name}</h4>
-                    <p className="text-sm text-slate-500 mt-0.5">Spent: ₹{dept.spent.toLocaleString()}</p>
+                    <p className="text-sm text-slate-500 mt-0.5">Spent: ₹{spentVal.toLocaleString()}</p>
                   </div>
 
                   {isEditing ? (
@@ -798,7 +855,6 @@ function AdminDashboard({ requests, financeData, setFinanceData }) {
                   )}
                 </div>
 
-                {/* Visual Progress Bar (Hidden during edit for clean UI) */}
                 {!isEditing && (
                   <div>
                     <div className="flex justify-between text-sm mb-1.5 font-bold">
@@ -814,12 +870,11 @@ function AdminDashboard({ requests, financeData, setFinanceData }) {
                   </div>
                 )}
               </div>
-            )
+            );
           })}
         </div>
       </div>
 
-      {/* --- ORIGINAL: Recent Activity Feed --- */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Recent Activity Feed</h3>
 
@@ -853,7 +908,6 @@ function AdminDashboard({ requests, financeData, setFinanceData }) {
           </div>
         )}
       </div>
-
     </div>
   );
 }
@@ -864,7 +918,8 @@ function ProfessorDashboard({ financeData }) {
       <h3 className="text-lg font-bold text-[#2D4A3E] mb-6">Department Budget Tracker</h3>
       <div className="space-y-6">
         {financeData.map(dept => {
-          const percent = (dept.spent / dept.budget) * 100;
+          const spentVal = dept.spent || 0;
+          const percent = (spentVal / dept.budget) * 100;
           const isDanger = percent > 90;
 
           return (
@@ -872,7 +927,7 @@ function ProfessorDashboard({ financeData }) {
               <div className="flex justify-between text-sm mb-2">
                 <span className="font-semibold text-slate-700">{dept.name}</span>
                 <span className="text-slate-500">
-                  ₹{dept.spent.toLocaleString()} / ₹{dept.budget.toLocaleString()}
+                  ₹{spentVal.toLocaleString()} / ₹{dept.budget.toLocaleString()}
                 </span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
@@ -895,12 +950,9 @@ function ProfessorDashboard({ financeData }) {
 }
 
 function VendorDashboard({ user, requests }) {
-  // 1. Find all paid/approved requests that belong to this specific logged-in vendor
   const mySales = requests.filter(r => r.vendor === user.id && r.status.includes('Paid'));
 
   let salesData = [];
-
-  // 2. Aggregate the revenue dynamically if they have actual sales
   if (mySales.length > 0) {
     const productSales = {};
     mySales.forEach(req => {
@@ -915,7 +967,6 @@ function VendorDashboard({ user, requests }) {
       revenue: productSales[name]
     }));
   } else {
-    // 3. Fallback to mock data so the charts look visually appealing on first load
     salesData = [
       { name: 'Interactive Smartboard', revenue: 450000 },
       { name: 'Student Chromebook', revenue: 125000 },
@@ -931,7 +982,7 @@ function VendorDashboard({ user, requests }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-96">
-          <h3 className="font-bold text-[#2D4A3E] mb-4">Revenue by Product (Demo Graph)</h3>
+          <h3 className="font-bold text-[#2D4A3E] mb-4">Revenue by Product</h3>
           <ResponsiveContainer width="100%" height="85%">
             <BarChart data={salesData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -944,7 +995,7 @@ function VendorDashboard({ user, requests }) {
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-96">
-          <h3 className="font-bold text-[#2D4A3E] mb-4">Sales Distribution (Demo Graph)</h3>
+          <h3 className="font-bold text-[#2D4A3E] mb-4">Sales Distribution</h3>
           <ResponsiveContainer width="100%" height="85%">
             <PieChart>
               <Pie data={salesData} dataKey="revenue" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
