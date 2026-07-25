@@ -3,3 +3,4 @@ pydantic
 groq
 python-dotenv
 uvicorn
+python-pptx
