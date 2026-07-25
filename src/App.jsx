@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Wallet, Store, CheckCircle, FileText, Building, LineChart as ChartIcon, UserPlus, LogOut, Sparkles, X } from 'lucide-react'; // Added 'X' icon for the close button
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react'; // --- NEW IMPORT ---
+import { supabase } from './supabaseClient';
+
 // --- MOCK DATA ---
 const INITIAL_PRODUCTS = {
   Tech: [
@@ -32,6 +34,81 @@ export default function App() {
   const [profRequests, setProfRequests] = useState([]);
   const [vendorProducts, setVendorProducts] = useState(INITIAL_PRODUCTS);
   const [financeData, setFinanceData] = useState(INITIAL_FINANCE_DATA);
+
+  // --- NEW: Fetch Initial Data from Supabase ---
+  useEffect(() => {
+    async function loadData() {
+      try {
+        // 1. Fetch departments
+        const { data: depts, error: deptErr } = await supabase.from('departments').select('*');
+        if (depts && depts.length > 0) {
+          setFinanceData(depts);
+        } else if (deptErr) {
+          console.error("Error fetching departments:", deptErr);
+        }
+
+        // 2. Fetch products
+        const { data: prods, error: prodErr } = await supabase.from('products').select('*');
+        let currentProducts = INITIAL_PRODUCTS;
+        if (prods) {
+          const merged = JSON.parse(JSON.stringify(INITIAL_PRODUCTS));
+          prods.forEach(prod => {
+            const cat = prod.category || 'Tech';
+            if (!merged[cat]) {
+              merged[cat] = [];
+            }
+            if (!merged[cat].some(p => p.id === prod.id)) {
+              merged[cat].push({
+                id: prod.id,
+                name: prod.name,
+                brand: prod.brand,
+                price: prod.price,
+                vendor: prod.vendor_id || prod.vendor || 'Unknown Vendor'
+              });
+            }
+          });
+          setVendorProducts(merged);
+          currentProducts = merged;
+        } else if (prodErr) {
+          console.error("Error fetching products:", prodErr);
+        }
+
+        // 3. Fetch budget requests
+        const { data: reqs, error: reqErr } = await supabase.from('budget_requests').select('*');
+        if (reqs) {
+          const allProds = Object.values(currentProducts).flat();
+          const mapped = reqs.map(req => {
+            const product = allProds.find(p => p.id === req.product_id);
+            return {
+              id: req.id,
+              profId: req.prof_id,
+              department: req.department_name,
+              quantity: req.quantity,
+              productId: req.product_id,
+              productName: product ? product.name : 'Unknown Product',
+              vendor: req.vendor_id,
+              customNotes: req.custom_notes,
+              rfp: req.rfp_text,
+              status: req.status,
+              budgetStatus: req.verified_cost ? {
+                verifiedCost: req.verified_cost,
+                remainingBudget: 200000,
+                isSufficient: true
+              } : null
+            };
+          });
+          setProfRequests(mapped);
+        } else if (reqErr) {
+          console.error("Error fetching requests:", reqErr);
+        }
+      } catch (err) {
+        console.error("Failed to load initial data from Supabase:", err);
+      }
+    }
+
+    loadData();
+  }, []);
+
 
   // --- LOGIN LOGIC ---
   const handleLogin = (regNumber) => {
@@ -213,22 +290,59 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
     setLoadingAI(false);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!currentProduct || !quantity) return;
 
-    setRequests([...requests, {
-      id: `REQ-${Math.floor(Math.random() * 1000)}`,
-      profId: user.id,
-      department,
+    const newRequestPayload = {
+      prof_id: user.id,
+      department_name: department,
+      product_id: currentProduct.id,
+      vendor_id: currentProduct.vendor,
       quantity: parseInt(quantity),
-      productId: currentProduct.id,
-      productName: currentProduct.name,
-      vendor: currentProduct.vendor,
-      customNotes: desc,
-      rfp: rfpText,
-      status: 'Pending',
-      budgetStatus: null
-    }]);
+      custom_notes: desc,
+      rfp_text: rfpText,
+      status: 'Pending'
+    };
+
+    try {
+      const { data, error } = await supabase.from('budget_requests').insert([newRequestPayload]).select();
+      if (error) {
+        console.error("Supabase request insertion failed:", error);
+        alert("Database error: " + error.message);
+        return;
+      }
+      const created = (data && data.length > 0) ? data[0] : { ...newRequestPayload, id: `local-${Math.random()}` };
+
+      setRequests([...requests, {
+        id: created.id,
+        profId: created.prof_id,
+        department: created.department_name,
+        quantity: created.quantity,
+        productId: created.product_id,
+        productName: currentProduct.name,
+        vendor: created.vendor_id,
+        customNotes: created.custom_notes,
+        rfp: created.rfp_text,
+        status: created.status,
+        budgetStatus: null
+      }]);
+    } catch (err) {
+      console.error("Network error saving request:", err);
+      // Fallback to local state
+      setRequests([...requests, {
+        id: `local-${Math.random()}`,
+        profId: user.id,
+        department,
+        quantity: parseInt(quantity),
+        productId: currentProduct.id,
+        productName: currentProduct.name,
+        vendor: currentProduct.vendor,
+        customNotes: desc,
+        rfp: rfpText,
+        status: 'Pending',
+        budgetStatus: null
+      }]);
+    }
     setQuantity('');
     setDesc('');
     setRfpText('');
@@ -260,7 +374,12 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
     }, 600);
   };
 
-  const handleApprove = (id) => {
+  const handleApprove = async (id) => {
+    try {
+      await supabase.from('budget_requests').update({ status: 'Approved (Sent to Vendor)' }).eq('id', id);
+    } catch (err) {
+      console.error("Supabase update error:", err);
+    }
     setRequests(requests.map(r => r.id === id ? { ...r, status: 'Approved (Sent to Vendor)' } : r));
   };
 
@@ -270,7 +389,16 @@ function RequestView({ user, requests, setRequests, financeData, vendorProducts 
   };
 
   // --- NEW: Confirm Payment Success ---
-  const confirmPayment = () => {
+  const confirmPayment = async () => {
+    const verifiedCost = checkoutReq.budgetStatus?.verifiedCost || 0;
+    try {
+      await supabase.from('budget_requests').update({ 
+        status: 'Paid & Ordered',
+        verified_cost: verifiedCost
+      }).eq('id', checkoutReq.id);
+    } catch (err) {
+      console.error("Supabase update error:", err);
+    }
     setRequests(requests.map(r => r.id === checkoutReq.id ? { ...r, status: 'Paid & Ordered' } : r));
     setCheckoutReq(null);
   };
