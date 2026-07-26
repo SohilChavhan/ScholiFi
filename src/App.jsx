@@ -245,7 +245,7 @@ export default function App() {
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h3 className="text-xl font-bold text-[#2D4A3E]">Welcome to your Dashboard, {user.role}</h3>
               {user.role === 'Admin' && <AdminDashboard requests={profRequests} financeData={financeData} setFinanceData={setFinanceData} />}
-              {user.role === 'Professor' && <ProfessorDashboard financeData={financeData} />}
+              {user.role === 'Professor' && <ProfessorDashboard user={user} financeData={financeData} requests={profRequests} salaries={teachersSalaries} />}
               {user.role === 'Vendor' && <VendorDashboard user={user} requests={profRequests} />}
             </div>
           )}
@@ -1458,38 +1458,187 @@ function AdminDashboard({ requests, financeData, setFinanceData }) {
   );
 }
 
-function ProfessorDashboard({ financeData }) {
-  return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-      <h3 className="text-lg font-bold text-[#2D4A3E] mb-6">Department Budget Tracker</h3>
-      <div className="space-y-6">
-        {financeData.map(dept => {
-          const percent = (dept.spent / dept.budget) * 100;
-          const isDanger = percent > 90;
+function ProfessorDashboard({ user, financeData, requests, salaries }) {
+  // 1. Resolve department
+  const profInfo = salaries ? salaries.find(t => t.id === user.id) : null;
+  let myDeptName = profInfo ? profInfo.department : null;
 
-          return (
-            <div key={dept.name}>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="font-semibold text-slate-700">{dept.name}</span>
-                <span className="text-slate-500">
-                  ₹{dept.spent.toLocaleString()} / ₹{dept.budget.toLocaleString()}
-                </span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                <div
-                  className={`h-3 rounded-full transition-all duration-1000 ${isDanger ? 'bg-red-500' : 'bg-[#2D4A3E]'}`}
-                  style={{ width: `${Math.min(percent, 100)}%` }}
-                />
-              </div>
-              {isDanger && (
-                <p className="text-xs text-red-500 mt-2 font-medium">
-                  Approaching budget limit!
-                </p>
-              )}
+  if (!myDeptName) {
+    const myLastRequest = requests.find(r => r.profId === user.id);
+    myDeptName = myLastRequest ? myLastRequest.department : 'Computer Science';
+  }
+
+  const dept = financeData.find(d => d.name === myDeptName) || { name: myDeptName, budget: 300000, spent: 0 };
+  const percent = dept.budget > 0 ? (dept.spent / dept.budget) * 100 : 0;
+  const isDanger = percent > 90;
+
+  // 2. Personal Request Timeline
+  const myRequests = requests.filter(r => r.profId === user.id);
+
+  // Helper for tracking request status step
+  const getStatusStep = (status) => {
+    if (status.includes('Paid') || status.includes('Ordered')) return 3;
+    if (status.includes('Approved')) return 2;
+    return 1; // Pending
+  };
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
+      
+      {/* 1. Isolated Department Tracker */}
+      <div className="bg-[#2D4A3E] text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute left-1/3 bottom-0 w-60 h-20 bg-[#D4AF37]/10 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <span className="text-[#D4AF37] font-bold text-xs uppercase tracking-wider bg-white/10 px-3 py-1 rounded-full">
+                Isolated Department Budget
+              </span>
+              <h3 className="text-3xl font-black mt-2 tracking-tight">{dept.name}</h3>
             </div>
-          );
-        })}
+            <div className="text-left md:text-right">
+              <p className="text-sm text-slate-300">Remaining Spending Power</p>
+              <p className="text-3xl font-black text-[#D4AF37] mt-1">
+                ₹{(dept.budget - dept.spent).toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-semibold text-slate-300">
+              <span>Budget Utilized: {percent.toFixed(1)}%</span>
+              <span>Limit: ₹{dept.budget.toLocaleString()}</span>
+            </div>
+            <div className="w-full bg-white/10 rounded-full h-4 overflow-hidden border border-white/5">
+              <div
+                className={`h-full rounded-full transition-all duration-1000 ${isDanger ? 'bg-red-500' : 'bg-gradient-to-r from-[#D4AF37] to-yellow-500'}`}
+                style={{ width: `${Math.min(percent, 100)}%` }}
+              />
+            </div>
+            {isDanger && (
+              <p className="text-xs text-red-300 font-bold flex items-center animate-pulse">
+                ⚠️ Critical warning: You have utilized over 90% of your department budget.
+              </p>
+            )}
+          </div>
+
+          {/* Stats breakdown */}
+          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/10 text-center">
+            <div>
+              <p className="text-xs text-slate-300 uppercase font-semibold">Total Allocated</p>
+              <p className="text-lg font-bold text-white mt-1">₹{dept.budget.toLocaleString()}</p>
+            </div>
+            <div className="border-x border-white/10">
+              <p className="text-xs text-slate-300 uppercase font-semibold">Total Spent</p>
+              <p className="text-lg font-bold text-white mt-1">₹{dept.spent.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-300 uppercase font-semibold">Status</p>
+              <p className={`text-lg font-bold mt-1 ${isDanger ? 'text-red-400' : 'text-green-400'}`}>
+                {isDanger ? 'Restricted' : 'Healthy'}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* 2. Personal Request Timeline */}
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-6">
+        <div>
+          <h3 className="text-xl font-bold text-[#2D4A3E]">Your Request Tracking</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Real-time status tracking for items you have requested in the procurement system.
+          </p>
+        </div>
+
+        {myRequests.length === 0 ? (
+          <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <p className="text-sm text-slate-500">You haven't submitted any budget requests yet.</p>
+            <p className="text-xs text-slate-400 mt-1">Head over to the "Budget Requests" tab to get started.</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {myRequests.map(req => {
+              const currentStep = getStatusStep(req.status);
+              return (
+                <div key={req.id} className="border border-slate-100 p-6 rounded-2xl bg-[#FBF9F5]/40 hover:shadow-md transition-all space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-[#2D4A3E] text-base">{req.quantity}x {req.productName}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">Request ID: {req.id} | Vendor: {req.vendor}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-semibold">
+                        {req.department}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Horizontal Timeline */}
+                  <div className="pt-4 pb-2">
+                    <div className="relative flex items-center justify-between">
+                      {/* Background connecting line */}
+                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-slate-200 z-0 rounded-full" />
+                      {/* Active connecting line */}
+                      <div 
+                        className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-[#2D4A3E] z-0 rounded-full transition-all duration-500" 
+                        style={{ width: `${currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%'}` }}
+                      />
+
+                      {/* Step 1: Pending */}
+                      <div className="relative z-10 flex flex-col items-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${
+                          currentStep >= 1 
+                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]' 
+                            : 'bg-white text-slate-400 border-slate-200'
+                        }`}>
+                          1
+                        </div>
+                        <span className={`text-[10px] md:text-xs font-bold mt-2 ${currentStep >= 1 ? 'text-[#2D4A3E]' : 'text-slate-400'}`}>
+                          Pending Admin
+                        </span>
+                      </div>
+
+                      {/* Step 2: Approved */}
+                      <div className="relative z-10 flex flex-col items-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${
+                          currentStep >= 2 
+                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]' 
+                            : 'bg-white text-slate-400 border-slate-200'
+                        }`}>
+                          2
+                        </div>
+                        <span className={`text-[10px] md:text-xs font-bold mt-2 ${currentStep >= 2 ? 'text-[#2D4A3E]' : 'text-slate-400'}`}>
+                          Approved
+                        </span>
+                      </div>
+
+                      {/* Step 3: Paid & Ordered */}
+                      <div className="relative z-10 flex flex-col items-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${
+                          currentStep >= 3 
+                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]' 
+                            : 'bg-white text-slate-400 border-slate-200'
+                        }`}>
+                          3
+                        </div>
+                        <span className={`text-[10px] md:text-xs font-bold mt-2 ${currentStep >= 3 ? 'text-[#2D4A3E]' : 'text-slate-400'}`}>
+                          Paid & Ordered
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
