@@ -293,9 +293,14 @@ export default function App() {
 function LoginView({ onLogin }) {
   const [regNum, setRegNum] = useState('');
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onLogin(regNum);
+  };
+
   return (
     <div className="flex h-screen bg-[#FBF9F5] items-center justify-center">
-      <div className="bg-white p-10 rounded-2xl shadow-lg border border-slate-200 w-96">
+      <form onSubmit={handleSubmit} className="bg-white p-10 rounded-2xl shadow-lg border border-slate-200 w-96">
         <div className="flex justify-center mb-6">
           <div className="bg-[#D4AF37] p-3 rounded-xl">
             <Building className="w-8 h-8 text-[#2D4A3E]" />
@@ -312,12 +317,12 @@ function LoginView({ onLogin }) {
           onChange={(e) => setRegNum(e.target.value)}
         />
         <button
-          onClick={() => onLogin(regNum)}
+          type="submit"
           className="w-full bg-[#2D4A3E] text-white rounded-xl py-3 font-semibold hover:bg-[#1E332A] transition-colors"
         >
           Sign In
         </button>
-      </div>
+      </form>
     </div>
   );
 }
