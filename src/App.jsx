@@ -185,7 +185,7 @@ export default function App() {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard />, roles: ['Admin', 'Professor', 'Vendor'] },
     { id: 'requests', label: 'Budget Requests', icon: <FileText />, roles: ['Admin', 'Professor'] },
-    { id: 'scanner', label: 'Invoice Scanner', icon: <ScanLine />, roles: ['Admin', 'Professor'] },
+    { id: 'scanner', label: 'Invoice Scanner', icon: <ScanLine />, roles: ['Admin'] },
     { id: 'salaries', label: 'Salary Portal', icon: <Wallet />, roles: ['Admin', 'Professor'] },
     { id: 'auction', label: 'Auction Center', icon: <Gavel />, roles: ['Admin'] }, // <-- NEW TAB
     { id: 'vendor', label: 'Vendor Portal', icon: <Store />, roles: ['Admin', 'Vendor'] },
@@ -258,6 +258,7 @@ export default function App() {
               setFinanceData={setFinanceData}
               requests={profRequests}
               setRequests={setProfRequests}
+              vendorProducts={vendorProducts}
             />
           )}
           {activeTab === 'salaries' && (
@@ -272,7 +273,7 @@ export default function App() {
             <AuctionCenterView
               requests={profRequests}
               setRequests={setProfRequests}
-              vendorProducts={vendorProducts} // <-- ADD THIS LINE
+              vendorProducts={vendorProducts}
             />
           )}
           {activeTab === 'vendor' && <VendorPortalView
@@ -281,6 +282,7 @@ export default function App() {
             setVendorProducts={setVendorProducts}
             requests={profRequests}
             setRequests={setProfRequests}
+            financeData={financeData}
           />}
           {activeTab === 'finance' && <FinanceAnalyzerView financeData={financeData} />}
         </div>
@@ -686,7 +688,166 @@ function RequestView({ user, requests, setRequests, financeData, setFinanceData,
   );
 }
 // --- VENDOR PORTAL VIEW ---
-function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, setRequests }) {
+// --- NEW COMPONENT: Send Demo Invoice to Admin ---
+function VendorSendInvoiceSection({ user, vendorProducts, financeData, requests, setRequests }) {
+  const [invoiceProdId, setInvoiceProdId] = useState('');
+  const [invoiceDept, setInvoiceDept] = useState('Computer Science');
+  const [invoiceQty, setInvoiceQty] = useState('');
+  const [invoiceNotes, setInvoiceNotes] = useState('');
+  const [sendingInvoice, setSendingInvoice] = useState(false);
+
+  const myProducts = Object.values(vendorProducts).flat().filter(p => p.vendor === user.id || p.vendor_id === user.id);
+
+  useEffect(() => {
+    if (myProducts.length > 0 && !invoiceProdId) {
+      setInvoiceProdId(myProducts[0].id);
+    }
+  }, [myProducts, invoiceProdId]);
+
+  const handleSendInvoice = async () => {
+    const selectedProd = myProducts.find(p => p.id === invoiceProdId);
+    if (!selectedProd) {
+      return alert("Please select a product from your catalog.");
+    }
+    const qty = parseInt(invoiceQty);
+    if (isNaN(qty) || qty <= 0) {
+      return alert("Please enter a valid quantity.");
+    }
+
+    setSendingInvoice(true);
+    const cost = selectedProd.price * qty;
+
+    const newRequestPayload = {
+      prof_id: user.id, // Vendor ID
+      department_name: invoiceDept,
+      product_id: selectedProd.id,
+      vendor_id: user.id,
+      quantity: qty,
+      custom_notes: invoiceNotes || 'Demo Invoice sent by Vendor',
+      rfp_text: 'Vendor Invoice Demo',
+      status: 'Invoice Sent',
+      verified_cost: cost
+    };
+
+    try {
+      const { data, error } = await supabase.from('budget_requests').insert([newRequestPayload]).select();
+      if (error) {
+        throw error;
+      }
+      const created = (data && data.length > 0) ? data[0] : { ...newRequestPayload, id: `inv-${Math.random()}` };
+
+      setRequests([...(requests || []), {
+        id: created.id,
+        profId: created.prof_id,
+        department: created.department_name,
+        quantity: created.quantity,
+        productId: created.product_id,
+        productName: selectedProd.name,
+        vendor: created.vendor_id,
+        customNotes: created.custom_notes,
+        rfp: created.rfp_text,
+        status: created.status,
+        budgetStatus: {
+          verifiedCost: cost,
+          remainingBudget: 200000,
+          isSufficient: true
+        }
+      }]);
+
+      alert(`Success! Invoice for ₹${cost.toLocaleString()} sent to the Admin.`);
+      setInvoiceQty('');
+      setInvoiceNotes('');
+    } catch (err) {
+      console.error("Error sending invoice:", err);
+      alert("Failed to send invoice: " + err.message);
+    } finally {
+      setSendingInvoice(false);
+    }
+  };
+
+  if (myProducts.length === 0) {
+    return (
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-6">
+        <h3 className="text-lg font-bold text-[#2D4A3E] mb-2">Send Demo Invoice to Admin</h3>
+        <p className="text-sm text-slate-500">
+          You don't have any products in your catalog yet. Add products to your catalog to send demo invoices to the Admin.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-6 space-y-4">
+      <h3 className="text-lg font-bold text-[#2D4A3E]">Send Demo Invoice to Admin</h3>
+      <p className="text-xs text-slate-500">
+        Create and submit a mock invoice directly to the Admin's Invoice Scanner for approval and budget matching.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="flex flex-col space-y-1">
+          <label className="text-xs font-bold text-slate-600">Select Item</label>
+          <select
+            value={invoiceProdId}
+            onChange={e => setInvoiceProdId(e.target.value)}
+            className="border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] bg-white text-sm"
+          >
+            {myProducts.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name} (₹{p.price.toLocaleString()})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col space-y-1">
+          <label className="text-xs font-bold text-slate-600">Target Department</label>
+          <select
+            value={invoiceDept}
+            onChange={e => setInvoiceDept(e.target.value)}
+            className="border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] bg-white text-sm"
+          >
+            {(financeData || []).map(d => (
+              <option key={d.name} value={d.name}>{d.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col space-y-1">
+          <label className="text-xs font-bold text-slate-600">Quantity</label>
+          <input
+            type="number"
+            placeholder="Quantity"
+            value={invoiceQty}
+            onChange={e => setInvoiceQty(e.target.value)}
+            className="border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] text-sm"
+            min="1"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col space-y-1">
+        <label className="text-xs font-bold text-slate-600">Invoice Notes</label>
+        <textarea
+          placeholder="E.g., Hardware shipment invoice for Chemistry lab..."
+          value={invoiceNotes}
+          onChange={e => setInvoiceNotes(e.target.value)}
+          className="border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] text-sm"
+          rows={2}
+        />
+      </div>
+
+      <button
+        onClick={handleSendInvoice}
+        disabled={sendingInvoice}
+        className="w-full bg-[#2D4A3E] text-white py-3 rounded-xl font-bold hover:bg-[#1E332A] transition-colors text-sm"
+      >
+        {sendingInvoice ? 'Sending Invoice...' : 'Send Demo Invoice to Admin'}
+      </button>
+    </div>
+  );
+}
+
+function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, setRequests, financeData }) {
   const [activeCategory, setActiveCategory] = useState('Tech');
   const [newItemName, setNewItemName] = useState('');
   const [newItemPrice, setNewItemPrice] = useState('');
@@ -940,6 +1101,17 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
           </div>
         )}
       </div>
+
+      {/* SEND DEMO INVOICE SECTION (Only visible to Vendors) */}
+      {user.role === 'Vendor' && (
+        <VendorSendInvoiceSection
+          user={user}
+          vendorProducts={vendorProducts}
+          financeData={financeData}
+          requests={requests}
+          setRequests={setRequests}
+        />
+      )}
 
       {checkoutData && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
@@ -1840,9 +2012,11 @@ function VendorAuctionHouse({ user, requests, vendorProducts }) {
 }
 
 // --- INVOICE SCANNER VIEW ---
-function ScannerView({ user, financeData, setFinanceData, requests, setRequests }) {
+function ScannerView({ user, financeData, setFinanceData, requests, setRequests, vendorProducts }) {
   const [scanState, setScanState] = useState('idle'); // idle, scanning, result
   const [mockInvoice, setMockInvoice] = useState(null);
+
+  const pendingInvoices = requests.filter(r => r.status === 'Invoice Sent');
 
   const handleUpload = (type) => {
     setScanState('scanning');
@@ -1866,6 +2040,21 @@ function ScannerView({ user, financeData, setFinanceData, requests, setRequests 
     }, 2000);
   };
 
+  const handleProcessVendorInvoice = (inv) => {
+    setScanState('scanning');
+    setTimeout(() => {
+      setMockInvoice({
+        id: inv.id,
+        vendor: inv.vendor,
+        amount: inv.budgetStatus?.verifiedCost || inv.verified_cost || 0,
+        dept: inv.department,
+        items: [{ desc: `${inv.productName} (x${inv.quantity})`, price: inv.budgetStatus?.verifiedCost || inv.verified_cost || 0 }],
+        isVendorInvoice: true
+      });
+      setScanState('result');
+    }, 2000);
+  };
+
   const handleApprove = async () => {
     const dept = financeData.find(d => d.name === mockInvoice.dept);
     const verifiedCost = mockInvoice.amount;
@@ -1881,40 +2070,59 @@ function ScannerView({ user, financeData, setFinanceData, requests, setRequests 
       const newSpentAmount = (dept.spent || 0) + verifiedCost;
       await supabase.from('departments').update({ spent: newSpentAmount }).eq('name', mockInvoice.dept);
 
-      // 2. Insert new budget request into Supabase with 'Paid & Ordered' status
-      const newRequestPayload = {
-        prof_id: user.id,
-        department_name: mockInvoice.dept,
-        product_id: 't2', // Using student chromebook
-        vendor_id: mockInvoice.vendor,
-        quantity: 1,
-        custom_notes: 'Digitized and approved via AI OCR Scanner',
-        rfp_text: 'N/A - Direct Scan & Approval',
-        status: 'Paid & Ordered',
-        verified_cost: verifiedCost
-      };
+      if (mockInvoice.isVendorInvoice) {
+        // Update the existing request in the database
+        await supabase.from('budget_requests').update({ 
+          status: 'Paid & Ordered',
+          verified_cost: verifiedCost
+        }).eq('id', mockInvoice.id);
 
-      const { data, error } = await supabase.from('budget_requests').insert([newRequestPayload]).select();
-      
-      // Update local state
-      const created = (data && data.length > 0) ? data[0] : { ...newRequestPayload, id: `local-${Math.random()}` };
-      setRequests([...requests, {
-        id: created.id,
-        profId: created.prof_id,
-        department: created.department_name,
-        quantity: created.quantity,
-        productId: created.product_id,
-        productName: mockInvoice.items[0].desc,
-        vendor: created.vendor_id,
-        customNotes: created.custom_notes,
-        rfp: created.rfp_text,
-        status: created.status,
-        budgetStatus: {
-          verifiedCost: verifiedCost,
-          remainingBudget: remainingBefore - verifiedCost,
-          isSufficient: true
-        }
-      }]);
+        // Update local requests state
+        setRequests(requests.map(r => r.id === mockInvoice.id ? {
+          ...r,
+          status: 'Paid & Ordered',
+          budgetStatus: {
+            verifiedCost: verifiedCost,
+            remainingBudget: remainingBefore - verifiedCost,
+            isSufficient: true
+          }
+        } : r));
+      } else {
+        // 2. Insert new budget request into Supabase with 'Paid & Ordered' status
+        const newRequestPayload = {
+          prof_id: user.id,
+          department_name: mockInvoice.dept,
+          product_id: 't2', // Using student chromebook
+          vendor_id: mockInvoice.vendor,
+          quantity: 1,
+          custom_notes: 'Digitized and approved via AI OCR Scanner',
+          rfp_text: 'N/A - Direct Scan & Approval',
+          status: 'Paid & Ordered',
+          verified_cost: verifiedCost
+        };
+
+        const { data, error } = await supabase.from('budget_requests').insert([newRequestPayload]).select();
+        
+        // Update local state
+        const created = (data && data.length > 0) ? data[0] : { ...newRequestPayload, id: `local-${Math.random()}` };
+        setRequests([...requests, {
+          id: created.id,
+          profId: created.prof_id,
+          department: created.department_name,
+          quantity: created.quantity,
+          productId: created.product_id,
+          productName: mockInvoice.items[0].desc,
+          vendor: created.vendor_id,
+          customNotes: created.custom_notes,
+          rfp: created.rfp_text,
+          status: created.status,
+          budgetStatus: {
+            verifiedCost: verifiedCost,
+            remainingBudget: remainingBefore - verifiedCost,
+            isSufficient: true
+          }
+        }]);
+      }
 
       setFinanceData(financeData.map(d => 
         d.name === mockInvoice.dept ? { ...d, spent: newSpentAmount } : d
@@ -1940,6 +2148,53 @@ function ScannerView({ user, financeData, setFinanceData, requests, setRequests 
           Upload physical invoice sheets here. The system uses AI OCR to extract values and automatically matches them with the remaining department funds to prevent accidental over-spending.
         </p>
       </div>
+
+      {pendingInvoices.length > 0 && scanState === 'idle' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <h4 className="text-lg font-bold text-[#2D4A3E] flex items-center">
+            <span className="bg-[#D4AF37]/20 text-[#D4AF37] px-2.5 py-0.5 rounded-lg text-xs font-bold mr-2 uppercase">New</span>
+            Pending Digital Invoices from Vendors
+          </h4>
+          <p className="text-xs text-slate-500">
+            These invoices were digitally submitted by verified school vendors. You can process, match budget, and pay them directly using our AI OCR Scanner simulation.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+            {pendingInvoices.map(inv => (
+              <div key={inv.id} className="border border-slate-100 p-5 rounded-2xl flex flex-col justify-between hover:shadow-md transition-all bg-slate-50/50">
+                <div>
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-semibold bg-[#2D4A3E]/10 text-[#2D4A3E] px-2 py-1 rounded-lg">
+                      {inv.department}
+                    </span>
+                    <span className="text-sm font-bold text-[#D4AF37]">
+                      ₹{(inv.budgetStatus?.verifiedCost || inv.verified_cost || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <h5 className="font-bold text-[#2D4A3E] mt-3">
+                    {inv.productName} (x{inv.quantity})
+                  </h5>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Submitted by: <span className="font-mono">{inv.profId}</span>
+                  </p>
+                  {inv.customNotes && (
+                    <p className="text-xs text-slate-400 mt-2 bg-white p-2 rounded-lg border border-slate-100 italic">
+                      "{inv.customNotes}"
+                    </p>
+                  )}
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                  <button
+                    onClick={() => handleProcessVendorInvoice(inv)}
+                    className="bg-[#2D4A3E] text-white text-xs px-4 py-2 rounded-xl font-bold hover:bg-[#1E332A] transition-colors flex items-center"
+                  >
+                    <ScanLine className="w-3.5 h-3.5 mr-1" /> Digitize & Process
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {scanState === 'idle' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
