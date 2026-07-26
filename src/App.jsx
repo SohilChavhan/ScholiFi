@@ -3,6 +3,7 @@ import { LayoutDashboard, Wallet, Store, CheckCircle, FileText, Building, LineCh
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react'; // --- NEW IMPORT ---
 import { supabase } from './supabaseClient';
+import StudentParentPortal from './student_parent_portal';
 
 // --- MOCK DATA ---
 const INITIAL_PRODUCTS = {
@@ -116,11 +117,16 @@ export default function App() {
     if (prefix === 'PRO') setUser({ role: 'Professor', id: regNumber });
     else if (prefix === 'ADM') setUser({ role: 'Admin', id: regNumber });
     else if (prefix === 'VEN') setUser({ role: 'Vendor', id: regNumber });
-    else alert('Invalid Registration Number. Use PRO-..., ADM-..., or VEN-...');
+    else if (prefix === 'STD' || prefix === 'PAR') setUser({ role: 'Student/Parent', id: regNumber });
+    else alert('Invalid Registration Number. Use PRO-..., ADM-..., VEN-..., STD-..., or PAR-...');
   };
 
   if (!user) {
     return <LoginView onLogin={handleLogin} />;
+  }
+
+  if (user.role === 'Student/Parent') {
+    return <StudentParentPortal user={user} onLogout={() => setUser(null)} />;
   }
 
   // --- MENU FILTERING BASED ON ROLE ---
@@ -130,7 +136,7 @@ export default function App() {
     { id: 'auction', label: 'Auction Center', icon: <Gavel />, roles: ['Admin'] }, // <-- NEW TAB
     { id: 'vendor', label: 'Vendor Portal', icon: <Store />, roles: ['Admin', 'Vendor'] },
     { id: 'finance', label: 'Finance Analyzer', icon: <ChartIcon />, roles: ['Admin'] },
-  ];  
+  ];
 
   return (
     <div className="flex h-screen bg-[#FBF9F5] text-slate-900 font-sans">
@@ -225,7 +231,7 @@ function LoginView({ onLogin }) {
           </div>
         </div>
         <h2 className="text-2xl font-bold text-center text-[#2D4A3E] mb-2">Login to ScholiFi</h2>
-        <p className="text-center text-slate-500 mb-8 text-sm">Use PRO-123, ADM-123, or VEN-123</p>
+        <p className="text-center text-slate-500 mb-8 text-sm">Use PRO-123, ADM-123, VEN-123, STD-0123, or PAR-123</p>
 
         <input
           type="text"
@@ -405,7 +411,7 @@ function RequestView({ user, requests, setRequests, financeData, setFinanceData,
 
     try {
       // 1. Update the order status to Paid
-      await supabase.from('budget_requests').update({ 
+      await supabase.from('budget_requests').update({
         status: 'Paid & Ordered',
         verified_cost: verifiedCost
       }).eq('id', checkoutReq.id);
@@ -419,7 +425,7 @@ function RequestView({ user, requests, setRequests, financeData, setFinanceData,
         await supabase.from('departments').update({ spent: newSpentAmount }).eq('name', deptName);
 
         // 4. Instantly update the UI so the graphs change without a refresh!
-        const updatedFinance = financeData.map(d => 
+        const updatedFinance = financeData.map(d =>
           d.name === deptName ? { ...d, spent: newSpentAmount } : d
         );
         setFinanceData(updatedFinance);
@@ -427,7 +433,7 @@ function RequestView({ user, requests, setRequests, financeData, setFinanceData,
     } catch (err) {
       console.error("Supabase update error:", err);
     }
-    
+
     setRequests(requests.map(r => r.id === checkoutReq.id ? { ...r, status: 'Paid & Ordered' } : r));
     setCheckoutReq(null);
     alert(`Payment successful! ₹${verifiedCost.toLocaleString()} has been deducted from ${deptName}'s budget.`);
@@ -740,16 +746,16 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
 
   return (
     <div className="space-y-6 relative">
-721 |       
-722 |       {/* ================================================== */}
-723 |       {/* REPLACE YOUR OLD RETURN HEADER WITH THIS:          */}
-724 |       <VendorLiabilityModal user={user} requests={requests} setRequests={setRequests} />
-725 |       {user.role === 'Vendor' && <VendorAuctionHouse user={user} requests={requests} vendorProducts={vendorProducts} />} {/* <-- ADD PROP HERE */}
-726 |       {/* ================================================== */}
-727 | 
-728 |       {user.role === 'Vendor' && (
-729 |         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-730 |           <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Add New Catalog Item</h3>
+      721 |
+      722 |       {/* ================================================== */}
+      723 |       {/* REPLACE YOUR OLD RETURN HEADER WITH THIS:          */}
+      724 |       <VendorLiabilityModal user={user} requests={requests} setRequests={setRequests} />
+      725 |       {user.role === 'Vendor' && <VendorAuctionHouse user={user} requests={requests} vendorProducts={vendorProducts} />} {/* <-- ADD PROP HERE */}
+      726 |       {/* ================================================== */}
+      727 |
+      728 |       {user.role === 'Vendor' && (
+        729 | <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          730 |           <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Add New Catalog Item</h3>
           <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
             {/* --- UPDATED: Category Dropdown with Custom Option --- */}
             <select
@@ -1159,8 +1165,8 @@ function AdminDashboard({ requests, financeData, setFinanceData }) {
                   </div>
                 </div>
                 <span className={`text-xs px-3 py-1 rounded-full font-bold ${req.status.includes('Approved') || req.status.includes('Paid')
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-[#D4AF37]/20 text-[#D4AF37]'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-[#D4AF37]/20 text-[#D4AF37]'
                   }`}>
                   {req.status}
                 </span>
@@ -1293,19 +1299,19 @@ function AdminLiveAuctionCard({ req, handleCloseAuction, vendorProducts }) {
         .eq('request_id', req.id)
         .order('bid_amount', { ascending: true })
         .limit(1);
-      
+
       if (data && data.length > 0) setLowestBid(data[0]);
 
       const { count } = await supabase
         .from('bids')
         .select('*', { count: 'exact', head: true })
         .eq('request_id', req.id);
-      
+
       if (count !== null) setBidCount(count);
     };
 
-    fetchBidData(); 
-    const interval = setInterval(fetchBidData, 3000); 
+    fetchBidData();
+    const interval = setInterval(fetchBidData, 3000);
     return () => clearInterval(interval);
   }, [req.id]);
 
@@ -1331,7 +1337,7 @@ function AdminLiveAuctionCard({ req, handleCloseAuction, vendorProducts }) {
         .limit(1);
 
       const currentPrice = (data && data.length > 0) ? data[0].bid_amount : startingPrice;
-      
+
       const dropPercentage = (Math.random() * 0.01);
       let newBotBid = Math.floor(currentPrice - (currentPrice * dropPercentage));
       if (newBotBid >= currentPrice) newBotBid = currentPrice - 1;
@@ -1343,7 +1349,7 @@ function AdminLiveAuctionCard({ req, handleCloseAuction, vendorProducts }) {
       };
 
       await supabase.from('bids').insert([botPayload]);
-    }, 4500); 
+    }, 4500);
 
     return () => clearInterval(botTimer);
   }, [req.id, req.status, req.productId, req.quantity, vendorProducts]);
@@ -1356,7 +1362,7 @@ function AdminLiveAuctionCard({ req, handleCloseAuction, vendorProducts }) {
         </div>
         <h4 className="font-bold text-[#2D4A3E] mb-1">{req.quantity}x {req.productName}</h4>
         <p className="text-sm text-slate-600 mb-4">Dept: {req.department}</p>
-        
+
         <div className="bg-white p-4 rounded-xl border border-slate-200 mb-4 shadow-sm">
           <p className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-1">Current Lowest</p>
           {lowestBid ? (
@@ -1371,8 +1377,8 @@ function AdminLiveAuctionCard({ req, handleCloseAuction, vendorProducts }) {
           )}
         </div>
       </div>
-      
-      <button 
+
+      <button
         onClick={() => handleCloseAuction(req.id)}
         className="w-full mt-2 bg-red-600 text-white px-4 py-3 rounded-xl text-sm font-bold hover:bg-red-700 transition-colors shadow-md flex justify-center items-center"
       >
@@ -1407,7 +1413,7 @@ function AuctionCenterView({ requests, setRequests, vendorProducts }) {
       .limit(1);
 
     if (bidError) return alert('Error fetching bids: ' + bidError.message);
-    
+
     if (!bids || bids.length === 0) {
       return alert("You can't close this auction yet—no one has placed a bid!");
     }
@@ -1417,15 +1423,15 @@ function AuctionCenterView({ requests, setRequests, vendorProducts }) {
 
     await supabase.from('bids').update({ is_winner: true }).eq('id', winningBid.id);
 
-    await supabase.from('budget_requests').update({ 
+    await supabase.from('budget_requests').update({
       status: newStatus,
-      vendor_id: winningBid.vendor_id, 
+      vendor_id: winningBid.vendor_id,
       verified_cost: winningBid.bid_amount
     }).eq('id', reqId);
 
-    setRequests(requests.map(r => r.id === reqId ? { 
-      ...r, 
-      status: newStatus, 
+    setRequests(requests.map(r => r.id === reqId ? {
+      ...r,
+      status: newStatus,
       vendor: winningBid.vendor_id,
       budgetStatus: { ...r.budgetStatus, verifiedCost: winningBid.bid_amount }
     } : r));
@@ -1435,7 +1441,7 @@ function AuctionCenterView({ requests, setRequests, vendorProducts }) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      
+
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex items-center space-x-3 mb-6">
           <div className="bg-[#D4AF37]/20 p-2 rounded-lg">
@@ -1468,17 +1474,17 @@ function AuctionCenterView({ requests, setRequests, vendorProducts }) {
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Live Auctions</h3>
-        
+
         {activeAuctions.length === 0 ? (
           <p className="text-slate-500 text-sm">No active auctions at the moment.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {activeAuctions.map(req => (
-              <AdminLiveAuctionCard 
-                key={req.id} 
-                req={req} 
-                handleCloseAuction={handleCloseAuction} 
-                vendorProducts={vendorProducts} 
+              <AdminLiveAuctionCard
+                key={req.id}
+                req={req}
+                handleCloseAuction={handleCloseAuction}
+                vendorProducts={vendorProducts}
               />
             ))}
           </div>
@@ -1492,8 +1498,8 @@ function VendorLiabilityModal({ user, requests, setRequests }) {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Find any auction this vendor just won that is waiting for signature
-  const winningRequest = requests.find(r => 
-    r.status === 'Pending Liability' && 
+  const winningRequest = requests.find(r =>
+    r.status === 'Pending Liability' &&
     (r.vendor === user.id || r.vendor_id === user.id)
   );
 
@@ -1513,17 +1519,17 @@ function VendorLiabilityModal({ user, requests, setRequests }) {
     if (reqError) return alert("Error locking contract: " + reqError.message);
 
     // 2. Update the local UI state so the modal disappears
-    setRequests(requests.map(r => 
+    setRequests(requests.map(r =>
       r.id === winningRequest.id ? { ...r, status: newStatus } : r
     ));
-    
+
     alert("Contract Locked! The order is officially yours.");
   };
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100]">
       <div className="bg-white p-8 rounded-3xl shadow-2xl w-[500px] relative animate-in zoom-in-95 duration-300 border-4 border-[#D4AF37]">
-        
+
         <div className="text-center mb-6">
           <div className="bg-[#D4AF37]/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <Gavel className="w-8 h-8 text-[#D4AF37]" />
@@ -1552,9 +1558,9 @@ function VendorLiabilityModal({ user, requests, setRequests }) {
 
         {/* The Clickwrap Checkbox */}
         <div className="mb-6 flex items-start space-x-3 bg-red-50 p-4 rounded-xl border border-red-100">
-          <input 
-            type="checkbox" 
-            id="liability" 
+          <input
+            type="checkbox"
+            id="liability"
             className="mt-1 w-5 h-5 accent-red-600 cursor-pointer"
             checked={acceptedTerms}
             onChange={(e) => setAcceptedTerms(e.target.checked)}
@@ -1583,18 +1589,18 @@ function VendorAuctionHouse({ user, requests, vendorProducts }) {
   const [myBid, setMyBid] = useState('');
 
   const currentAuction = activeAuctions.find(r => r.id === activeBiddingId);
-  
+
   // --- REAL PRICE CALCULATION ---
   const allProducts = Object.values(vendorProducts || {}).flat();
   const product = currentAuction ? allProducts.find(p => p.id === currentAuction.productId) : null;
-  const startingPrice = product && currentAuction ? (product.price * currentAuction.quantity) : 50000; 
+  const startingPrice = product && currentAuction ? (product.price * currentAuction.quantity) : 50000;
   const currentLowest = bids.length > 0 ? Math.min(...bids.map(b => b.bid_amount)) : startingPrice;
 
   // 1. Fetch existing bids when a vendor clicks an auction
   useEffect(() => {
     if (!activeBiddingId) return;
-// ... rest of the component continues
-    
+    // ... rest of the component continues
+
     const fetchBids = async () => {
       const { data } = await supabase.from('bids').select('*').eq('request_id', activeBiddingId).order('created_at', { ascending: true });
       if (data) setBids(data);
@@ -1612,10 +1618,10 @@ function VendorAuctionHouse({ user, requests, vendorProducts }) {
       if (Math.random() > 0.7) return;
 
       // Calculate a random drop between 0.1% and 1.0%
-      const maxDrop = 0.01; 
+      const maxDrop = 0.01;
       const dropPercentage = (Math.random() * maxDrop);
       let newBotBid = Math.floor(currentLowest - (currentLowest * dropPercentage));
-      
+
       // Ensure the bid actually drops by at least ₹1
       if (newBotBid >= currentLowest) newBotBid = currentLowest - 1;
 
@@ -1631,7 +1637,7 @@ function VendorAuctionHouse({ user, requests, vendorProducts }) {
 
       // Push bot bid to Supabase
       const { data } = await supabase.from('bids').insert([botPayload]).select();
-      
+
       if (data) {
         setBids(prev => [...prev, data[0]]);
       }
@@ -1667,7 +1673,7 @@ function VendorAuctionHouse({ user, requests, vendorProducts }) {
       <div className="absolute top-0 right-0 bg-[#D4AF37] text-white text-xs font-bold px-4 py-1.5 rounded-bl-xl tracking-wider animate-pulse">
         LIVE REVERSE AUCTIONS
       </div>
-      
+
       <h3 className="text-xl font-bold text-[#2D4A3E] mb-4 flex items-center">
         <Gavel className="w-6 h-6 mr-2 text-[#D4AF37]" /> Marketplace Bidding
       </h3>
@@ -1681,7 +1687,7 @@ function VendorAuctionHouse({ user, requests, vendorProducts }) {
                 <h4 className="font-bold text-[#2D4A3E]">{req.quantity}x {req.productName}</h4>
                 <p className="text-sm text-slate-500">Dept: {req.department}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setActiveBiddingId(req.id)}
                 className="bg-[#D4AF37] text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-yellow-600 shadow-sm"
               >
@@ -1732,14 +1738,14 @@ function VendorAuctionHouse({ user, requests, vendorProducts }) {
             <div className="flex flex-col justify-center bg-white border border-slate-200 rounded-xl p-6">
               <label className="text-sm font-bold text-slate-700 mb-2">Place Your Bid (₹)</label>
               <div className="flex space-x-2">
-                <input 
-                  type="number" 
-                  value={myBid} 
+                <input
+                  type="number"
+                  value={myBid}
                   onChange={(e) => setMyBid(e.target.value)}
                   placeholder={`Must be < ${currentLowest}`}
                   className="flex-1 border-2 border-slate-200 rounded-xl px-4 py-3 font-bold text-lg focus:outline-none focus:border-[#2D4A3E]"
                 />
-                <button 
+                <button
                   onClick={handleSubmitMyBid}
                   className="bg-[#2D4A3E] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#1E332A] transition-colors shadow-sm"
                 >
