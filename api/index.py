@@ -24,7 +24,13 @@ app.add_middleware(
 )
 
 # Initialize Groq client (Ensure GROQ_API_KEY is in your environment variables)
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+groq_api_key = os.getenv("GROQ_API_KEY")
+client = None
+if groq_api_key:
+    client = Groq(api_key=groq_api_key)
+else:
+    print("Warning: GROQ_API_KEY environment variable is not set. Groq features will be disabled.")
+
 
 class RequestModel(BaseModel):
     department: str
@@ -49,6 +55,8 @@ def login(registration_number: str):
 
 @app.post("/api/generate-rfp")
 def generate_rfp(request: RequestModel):
+    if not client:
+        raise HTTPException(status_code=500, detail="Groq API key not configured on the server. Please set GROQ_API_KEY.")
     prompt = f"Write a professional Request for Proposal (RFP) for a school {request.department} department. The requirement is to procure {request.quantity} units of: {request.description}. Keep it under 150 words and output only the RFP text.Dont use * anywhere in you output. Make up a hypothetical example of why you need the item."
     try:
         chat_completion = client.chat.completions.create(
@@ -62,6 +70,8 @@ def generate_rfp(request: RequestModel):
 
 @app.post("/api/estimate-cost")
 def estimate_cost(request: RequestModel):
+    if not client:
+        raise HTTPException(status_code=500, detail="Groq API key not configured on the server. Please set GROQ_API_KEY.")
     # 1. Give the AI a strict persona
     system_prompt = """
     You are an expert school procurement officer in India. 

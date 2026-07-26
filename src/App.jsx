@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Wallet, Store, CheckCircle, FileText, Building, LineChart as ChartIcon, UserPlus, LogOut, Sparkles, X, Gavel, ScanLine, Upload, Loader2, AlertTriangle, TrendingUp, Percent, Users, Award } from 'lucide-react'; // Added 'X' icon for the close button
+import { LayoutDashboard, Wallet, Store, CheckCircle, FileText, Building, LineChart as ChartIcon, UserPlus, LogOut, Sparkles, X, Gavel, ScanLine, Upload, Loader2, AlertTriangle, TrendingUp, Percent, Users, Award, CreditCard, Plus, Search, Bell, Send, ChevronDown, Menu, Shield, Check } from 'lucide-react'; // Added icons
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react'; // --- NEW IMPORT ---
 import { supabase } from './supabaseClient';
@@ -31,6 +31,7 @@ const COLORS = ['#2D4A3E', '#D4AF37', '#4A6B5D', '#E5C158'];
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profRequests, setProfRequests] = useState([]);
   const [vendorProducts, setVendorProducts] = useState(INITIAL_PRODUCTS);
@@ -175,7 +176,13 @@ export default function App() {
   };
 
   if (!user) {
-    return <LoginView onLogin={handleLogin} />;
+    return (
+      <LandingPageView
+        onLogin={handleLogin}
+        showLoginModal={showLoginModal}
+        setShowLoginModal={setShowLoginModal}
+      />
+    );
   }
 
   if (user.role === 'Student/Parent') {
@@ -190,6 +197,7 @@ export default function App() {
     { id: 'auction', label: 'Auction Center', icon: <Gavel />, roles: ['Admin'] }, // <-- NEW TAB
     { id: 'vendor', label: 'Vendor Portal', icon: <Store />, roles: ['Admin', 'Vendor'] },
     { id: 'finance', label: 'Finance Analyzer', icon: <ChartIcon />, roles: ['Admin'] },
+    { id: 'fees', label: 'Fee Management', icon: <CreditCard />, roles: ['Admin'] },
   ];
 
   return (
@@ -283,6 +291,7 @@ export default function App() {
             setRequests={setProfRequests}
           />}
           {activeTab === 'finance' && <FinanceAnalyzerView financeData={financeData} />}
+          {activeTab === 'fees' && <FeeManagementView />}
         </div>
       </main>
     </div>
@@ -290,34 +299,55 @@ export default function App() {
 }
 
 // --- LOGIN COMPONENT ---
-function LoginView({ onLogin }) {
+function LoginView({ onLogin, onClose }) {
   const [regNum, setRegNum] = useState('');
+
+  const containerContent = (
+    <div className="bg-white text-slate-900 p-10 rounded-2xl shadow-2xl border border-slate-200 w-96 relative animate-in zoom-in-95 duration-200">
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      )}
+      <div className="flex justify-center mb-6">
+        <div className="bg-[#D4AF37] p-3 rounded-xl">
+          <Building className="w-8 h-8 text-[#2D4A3E]" />
+        </div>
+      </div>
+      <h2 className="text-2xl font-bold text-center text-[#2D4A3E] mb-2">Login to ScholiFi</h2>
+      <p className="text-center text-slate-500 mb-8 text-sm">Use PRO-123, ADM-123, VEN-123, STD-0123, or PAR-0123</p>
+
+      <input
+        type="text"
+        placeholder="Registration Number"
+        className="w-full border border-slate-300 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] text-slate-900"
+        value={regNum}
+        onChange={(e) => setRegNum(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') onLogin(regNum); }}
+      />
+      <button
+        onClick={() => onLogin(regNum)}
+        className="w-full bg-[#2D4A3E] text-white rounded-xl py-3 font-semibold hover:bg-[#1E332A] transition-colors"
+      >
+        Sign In
+      </button>
+    </div>
+  );
+
+  if (onClose) {
+    return (
+      <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+        {containerContent}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#FBF9F5] items-center justify-center">
-      <div className="bg-white p-10 rounded-2xl shadow-lg border border-slate-200 w-96">
-        <div className="flex justify-center mb-6">
-          <div className="bg-[#D4AF37] p-3 rounded-xl">
-            <Building className="w-8 h-8 text-[#2D4A3E]" />
-          </div>
-        </div>
-        <h2 className="text-2xl font-bold text-center text-[#2D4A3E] mb-2">Login to ScholiFi</h2>
-        <p className="text-center text-slate-500 mb-8 text-sm">Use PRO-123, ADM-123, VEN-123, STD-0123, or PAR-123</p>
-
-        <input
-          type="text"
-          placeholder="Registration Number"
-          className="w-full border border-slate-300 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]"
-          value={regNum}
-          onChange={(e) => setRegNum(e.target.value)}
-        />
-        <button
-          onClick={() => onLogin(regNum)}
-          className="w-full bg-[#2D4A3E] text-white rounded-xl py-3 font-semibold hover:bg-[#1E332A] transition-colors"
-        >
-          Sign In
-        </button>
-      </div>
+      {containerContent}
     </div>
   );
 }
@@ -817,16 +847,16 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
 
   return (
     <div className="space-y-6 relative">
-721 |       
-722 |       {/* ================================================== */}
-723 |       {/* REPLACE YOUR OLD RETURN HEADER WITH THIS:          */}
-724 |       <VendorLiabilityModal user={user} requests={requests} setRequests={setRequests} />
-725 |       {user.role === 'Vendor' && <VendorAuctionHouse user={user} requests={requests} vendorProducts={vendorProducts} />} {/* <-- ADD PROP HERE */}
-726 |       {/* ================================================== */}
-727 | 
-728 |       {user.role === 'Vendor' && (
-729 |         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-730 |           <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Add New Catalog Item</h3>
+      721 |
+      722 |       {/* ================================================== */}
+      723 |       {/* REPLACE YOUR OLD RETURN HEADER WITH THIS:          */}
+      724 |       <VendorLiabilityModal user={user} requests={requests} setRequests={setRequests} />
+      725 |       {user.role === 'Vendor' && <VendorAuctionHouse user={user} requests={requests} vendorProducts={vendorProducts} />} {/* <-- ADD PROP HERE */}
+      726 |       {/* ================================================== */}
+      727 |
+      728 |       {user.role === 'Vendor' && (
+        729 | <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          730 |           <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Add New Catalog Item</h3>
           <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
             {/* --- UPDATED: Category Dropdown with Custom Option --- */}
             <select
@@ -1670,8 +1700,8 @@ function VendorAuctionHouse({ user, requests, vendorProducts }) {
   // 1. Fetch existing bids when a vendor clicks an auction
   useEffect(() => {
     if (!activeBiddingId) return;
-// ... rest of the component continues
-    
+    // ... rest of the component continues
+
     const fetchBids = async () => {
       const { data } = await supabase.from('bids').select('*').eq('request_id', activeBiddingId).order('created_at', { ascending: true });
       if (data) setBids(data);
@@ -1890,7 +1920,7 @@ function ScannerView({ user, financeData, setFinanceData, requests, setRequests 
       };
 
       const { data, error } = await supabase.from('budget_requests').insert([newRequestPayload]).select();
-      
+
       // Update local state
       const created = (data && data.length > 0) ? data[0] : { ...newRequestPayload, id: `local-${Math.random()}` };
       setRequests([...requests, {
@@ -1911,7 +1941,7 @@ function ScannerView({ user, financeData, setFinanceData, requests, setRequests 
         }
       }]);
 
-      setFinanceData(financeData.map(d => 
+      setFinanceData(financeData.map(d =>
         d.name === mockInvoice.dept ? { ...d, spent: newSpentAmount } : d
       ));
 
@@ -2114,7 +2144,7 @@ function SalaryPortalView({ user, salaries, setSalaries, financeData }) {
       });
     }
   });
-  const avgHike = allHikePercentages.length > 0 
+  const avgHike = allHikePercentages.length > 0
     ? (allHikePercentages.reduce((a, b) => a + b, 0) / allHikePercentages.length).toFixed(1)
     : '0.0';
 
@@ -2153,7 +2183,7 @@ function SalaryPortalView({ user, salaries, setSalaries, financeData }) {
 
     setSalaries([...salaries, newTeacher]);
     setRecruitSuccess(`Successfully recruited ${newTeacher.name} (${newTeacher.id})!`);
-    
+
     // Clear form
     setRecruitName('');
     setRecruitId('');
@@ -2312,8 +2342,8 @@ function SalaryPortalView({ user, salaries, setSalaries, financeData }) {
                   </thead>
                   <tbody>
                     {salaries.map(teacher => {
-                      const lastHike = teacher.hikeHistory && teacher.hikeHistory.length > 0 
-                        ? teacher.hikeHistory[teacher.hikeHistory.length - 1] 
+                      const lastHike = teacher.hikeHistory && teacher.hikeHistory.length > 0
+                        ? teacher.hikeHistory[teacher.hikeHistory.length - 1]
                         : null;
                       return (
                         <tr key={teacher.id} className="border-b hover:bg-slate-50">
@@ -2476,7 +2506,7 @@ function SalaryPortalView({ user, salaries, setSalaries, financeData }) {
                 </button>
                 <h3 className="text-xl font-bold text-[#2D4A3E] mb-2">{activeHistoryTeacher.name}</h3>
                 <p className="text-xs text-slate-400 uppercase font-bold mb-4">{activeHistoryTeacher.id} • {activeHistoryTeacher.department}</p>
-                
+
                 <h4 className="font-bold text-sm text-[#2D4A3E] mb-2 border-b pb-2">Hike & Payroll Logs</h4>
                 <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
                   {(!activeHistoryTeacher.hikeHistory || activeHistoryTeacher.hikeHistory.length === 0) ? (
@@ -2580,7 +2610,7 @@ function SalaryPortalView({ user, salaries, setSalaries, financeData }) {
               <h3 className="text-lg font-bold text-[#2D4A3E] flex items-center border-b pb-4">
                 <Sparkles className="w-5 h-5 mr-2 text-[#D4AF37]" /> Income Estimator Simulator
               </h3>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between text-sm">
                   <span className="font-semibold text-slate-700">Projected Salary Increase</span>
@@ -2625,10 +2655,1105 @@ function SalaryPortalView({ user, salaries, setSalaries, financeData }) {
                 <p className="text-[10px] text-slate-400 text-center italic mt-2">
                   Take-home estimate is calculated using basic simulated monthly tax slabs.
                 </p>
+                <p className="text-[10px] text-slate-400 text-center italic mt-2">
+                  Take-home estimate is calculated using basic simulated monthly tax slabs.
+                </p>
               </div>
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function FeeManagementView() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showChargeModal, setShowChargeModal] = useState(false);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [newFee, setNewFee] = useState({ category: '', amount: '', dueDate: '', academicYear: '2026-2027' });
+  const [reminderText, setReminderText] = useState('');
+  const [isImportant, setIsImportant] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [trigger, setTrigger] = useState(0);
+
+  const [students, setStudents] = useState(() => {
+    const saved = localStorage.getItem('scholifi_fee_students');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) { }
+    }
+    return [
+      { id: 'STD-0727', name: 'Aryan Sharma', class: '7th A', rollNo: 'STD0727', email: 'student.0727555@scholify.com', parentMobile: '+91 55566 60777' },
+      { id: 'STD-101', name: 'Rohan Gupta', class: '8th B', rollNo: 'STD0101', email: 'student.101@scholify.com', parentMobile: '+91 99988 87701' },
+      { id: 'STD-102', name: 'Priya Sen', class: '6th C', rollNo: 'STD0102', email: 'student.102@scholify.com', parentMobile: '+91 99988 87702' }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('scholifi_fee_students', JSON.stringify(students));
+  }, [students]);
+
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [newStudent, setNewStudent] = useState({ id: '', name: '', class: '', rollNo: '', email: '', parentMobile: '' });
+
+  // Helper to parse currency string (e.g. "₹ 1,800.00" -> 1800)
+  const parseAmount = (amtStr) => {
+    if (!amtStr) return 0;
+    const cleanStr = amtStr.replace(/[^\d.]/g, '');
+    return parseFloat(cleanStr) || 0;
+  };
+
+  const getStudentData = (studentId) => {
+    const savedNotices = localStorage.getItem(`scholifi_notices_${studentId}`);
+    let notices = [];
+    if (savedNotices) {
+      try { notices = JSON.parse(savedNotices); } catch (e) { }
+    } else {
+      notices = studentId === 'STD-0727' ? [{ id: 1, text: '2 days left for fee payment', isImportant: true }] : [];
+    }
+
+    const savedUpcoming = localStorage.getItem(`scholifi_upcoming_payments_${studentId}`);
+    let upcoming = [];
+    if (savedUpcoming) {
+      try { upcoming = JSON.parse(savedUpcoming); } catch (e) { }
+    } else {
+      upcoming = [
+        {
+          id: '1',
+          academicYear: '2026-2027',
+          feeCategory: 'Quarterly Fee (Installment 2 of 4)',
+          amountToBePaid: '₹ 1,800.00',
+          penalty: 'NA',
+          dueDate: 'Aug 15, 2026',
+          status: 'Due Soon',
+        },
+        {
+          id: '2',
+          academicYear: '2026-2027',
+          feeCategory: 'Transport Fee (Term 2)',
+          amountToBePaid: '₹ 800.00',
+          penalty: '+ ₹ 100.00 Late Fee',
+          dueDate: 'Jul 01, 2026',
+          status: 'Overdue',
+        },
+      ];
+    }
+
+    const savedHistory = localStorage.getItem(`scholifi_payment_history_${studentId}`);
+    let history = [];
+    if (savedHistory) {
+      try { history = JSON.parse(savedHistory); } catch (e) { }
+    } else {
+      history = [
+        {
+          id: '1',
+          academicYear: '2026-2027',
+          feeCategory: 'Quarterly Fee',
+          amountPaid: '₹ 1,800.00',
+          paymentDateTime: 'Mar 05, 2026 • 02:45 PM',
+          transactionId: '#TXN-2026-8941',
+          receiptNo: 'REC-2026-8941',
+          paymentStatus: 'Success',
+          paymentMethod: 'Netbanking',
+          paymentType: 'Installment (1 of 4)',
+          description: 'Quarterly Fee (Term 1 - Installment 1 of 4)',
+          subtotal: '1,800.00',
+          lateFine: '0.00',
+          discount: '0.00',
+          words: 'One Thousand Eight Hundred Rupees Only.',
+        },
+        {
+          id: '2',
+          academicYear: '2026-2027',
+          feeCategory: 'Transport Fee',
+          amountPaid: '₹ 800.00',
+          paymentDateTime: 'Mar 05, 2026 • 09:15 AM',
+          transactionId: '#TXN-2025-1092',
+          receiptNo: 'REC-2025-1092',
+          paymentStatus: 'Success',
+          paymentMethod: 'UPI',
+          paymentType: 'Full',
+          description: 'Transport Fee (Term 1)',
+          subtotal: '800.00',
+          lateFine: '0.00',
+          discount: '0.00',
+          words: 'Eight Hundred Rupees Only.',
+        },
+      ];
+    }
+
+    return { notices, upcoming, history };
+  };
+
+  const saveStudentData = (studentId, data) => {
+    if (data.notices) localStorage.setItem(`scholifi_notices_${studentId}`, JSON.stringify(data.notices));
+    if (data.upcoming) localStorage.setItem(`scholifi_upcoming_payments_${studentId}`, JSON.stringify(data.upcoming));
+    if (data.history) localStorage.setItem(`scholifi_payment_history_${studentId}`, JSON.stringify(data.history));
+    setTrigger(prev => prev + 1);
+  };
+
+  const handleCreateStudentSubmit = (e) => {
+    e.preventDefault();
+    if (!newStudent.id.trim() || !newStudent.name.trim() || !newStudent.class.trim()) {
+      return alert("ID, Name, and Class are required fields.");
+    }
+
+    const stdId = newStudent.id.trim().toUpperCase();
+    if (!stdId.startsWith('STD-') && !stdId.startsWith('PAR-')) {
+      return alert("Student/Parent ID must start with 'STD-' or 'PAR-' (e.g. STD-103) to enable portal login.");
+    }
+
+    if (students.some(s => s.id.toUpperCase() === stdId)) {
+      return alert("A student with this ID already exists.");
+    }
+
+    const createdStudent = {
+      id: stdId,
+      name: newStudent.name.trim(),
+      class: newStudent.class.trim(),
+      rollNo: newStudent.rollNo.trim() || stdId.replace(/[^\d]/g, '') || 'STD-NEW',
+      email: newStudent.email.trim() || `${stdId.toLowerCase()}@scholify.com`,
+      parentMobile: newStudent.parentMobile.trim() || '+91 99999 88888'
+    };
+
+    setStudents([...students, createdStudent]);
+    showToast(`Successfully added student ${createdStudent.name} (${createdStudent.id})!`);
+    setNewStudent({ id: '', name: '', class: '', rollNo: '', email: '', parentMobile: '' });
+    setShowAddStudentModal(false);
+  };
+
+  // Compile calculations for each student
+  const studentStats = students.map(student => {
+    const data = getStudentData(student.id);
+    const totalPending = data.upcoming.reduce((acc, curr) => acc + parseAmount(curr.amountToBePaid), 0);
+    const totalPaid = data.history.reduce((acc, curr) => acc + parseAmount(curr.amountPaid), 0);
+
+    let earliestDueDate = 'N/A';
+    if (data.upcoming.length > 0) {
+      earliestDueDate = data.upcoming[0].dueDate;
+    }
+
+    let status = 'All Paid';
+    if (data.upcoming.some(p => p.status === 'Overdue')) {
+      status = 'Overdue';
+    } else if (data.upcoming.some(p => p.status === 'Due Soon')) {
+      status = 'Due Soon';
+    }
+
+    return {
+      ...student,
+      totalPending,
+      totalPaid,
+      earliestDueDate,
+      status,
+      duesCount: data.upcoming.length,
+      data
+    };
+  });
+
+  // KPI calculations
+  const totalCollected = studentStats.reduce((acc, curr) => acc + curr.totalPaid, 0);
+  const totalOutstanding = studentStats.reduce((acc, curr) => acc + curr.totalPending, 0);
+  const totalReminders = studentStats.reduce((acc, curr) => acc + curr.data.notices.length, 0);
+  const collectionRate = totalCollected + totalOutstanding > 0
+    ? ((totalCollected / (totalCollected + totalOutstanding)) * 100).toFixed(1)
+    : '100';
+
+  const filteredStudents = studentStats.filter(s =>
+    s.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleSendReminderSubmit = (e) => {
+    e.preventDefault();
+    if (!selectedStudent || !reminderText.trim()) return;
+
+    const currentData = getStudentData(selectedStudent.id);
+    const newNotice = {
+      id: Date.now(),
+      text: reminderText,
+      isImportant: isImportant,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    };
+
+    currentData.notices.unshift(newNotice);
+    saveStudentData(selectedStudent.id, currentData);
+    showToast(`Payment reminder sent to ${selectedStudent.id}!`);
+    setReminderText('');
+    setShowReminderModal(false);
+  };
+
+  const handleChargeFeeSubmit = (e) => {
+    e.preventDefault();
+    if (!selectedStudent || !newFee.category || !newFee.amount) return;
+
+    const currentData = getStudentData(selectedStudent.id);
+    const formattedAmount = `₹ ${parseFloat(newFee.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+    const dateObj = new Date(newFee.dueDate);
+    const formattedDueDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+
+    const newUpcomingItem = {
+      id: String(Date.now()),
+      academicYear: newFee.academicYear,
+      feeCategory: newFee.category,
+      amountToBePaid: formattedAmount,
+      penalty: 'NA',
+      dueDate: formattedDueDate,
+      status: 'Due Soon'
+    };
+
+    currentData.upcoming.push(newUpcomingItem);
+    saveStudentData(selectedStudent.id, currentData);
+    showToast(`Fee charged successfully to ${selectedStudent.id}!`);
+    setNewFee({ category: '', amount: '', dueDate: '', academicYear: '2026-2027' });
+    setShowChargeModal(false);
+  };
+
+  const openReminderModal = (student, presetText = '') => {
+    setSelectedStudent(student);
+    setReminderText(presetText);
+    setShowReminderModal(true);
+  };
+
+  const openChargeModal = (student) => {
+    setSelectedStudent(student);
+    setShowChargeModal(true);
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 bg-[#2D4A3E] text-[#D4AF37] px-6 py-4 rounded-xl shadow-2xl z-50 border border-[#D4AF37]/30 flex items-center space-x-3 animate-in fade-in slide-in-from-top-4 duration-300">
+          <CheckCircle className="w-5 h-5 text-emerald-400" />
+          <span className="font-semibold text-sm">{toast}</span>
+        </div>
+      )}
+
+      {/* KPI Section */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300 group">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Collection</p>
+              <h3 className="text-2xl font-black text-[#2D4A3E] mt-2">₹{totalCollected.toLocaleString()}</h3>
+            </div>
+            <div className="bg-[#2D4A3E]/10 p-3 rounded-xl text-[#2D4A3E] group-hover:bg-[#2D4A3E] group-hover:text-white transition-all duration-300">
+              <Wallet className="w-6 h-6" />
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mt-4">Lifetime student payments</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300 group">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Outstanding Dues</p>
+              <h3 className="text-2xl font-black text-rose-600 mt-2">₹{totalOutstanding.toLocaleString()}</h3>
+            </div>
+            <div className="bg-rose-50 p-3 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-all duration-300">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mt-4">Unpaid student charges</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300 group">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Active Reminders</p>
+              <h3 className="text-2xl font-black text-[#D4AF37] mt-2">{totalReminders}</h3>
+            </div>
+            <div className="bg-amber-50 p-3 rounded-xl text-[#D4AF37] group-hover:bg-[#D4AF37] group-hover:text-white transition-all duration-300">
+              <Bell className="w-6 h-6" />
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mt-4">Notices sent to student dashboards</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300 group">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Collection Rate</p>
+              <h3 className="text-2xl font-black text-emerald-600 mt-2">{collectionRate}%</h3>
+            </div>
+            <div className="bg-emerald-50 p-3 rounded-xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="w-full bg-slate-100 h-2 rounded-full mt-4 overflow-hidden">
+            <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${collectionRate}%` }}></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Student Fee List */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
+          <div className="flex items-center space-x-3 w-full sm:w-auto">
+            <h4 className="text-lg font-bold text-[#2D4A3E]">Student Fee Directory</h4>
+            <button
+              onClick={() => setShowAddStudentModal(true)}
+              className="bg-[#D4AF37] text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-yellow-600 transition-colors flex items-center space-x-1 shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Student</span>
+            </button>
+          </div>
+
+          <div className="relative w-full sm:w-80">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="w-5 h-5 text-slate-400" />
+            </span>
+            <input
+              type="text"
+              placeholder="Search student ID or name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-xs tracking-wider text-center">
+                <th className="py-4 px-6 text-left">Student Info</th>
+                <th className="py-4 px-6 text-center">Class</th>
+                <th className="py-4 px-6 text-center">Dues Count</th>
+                <th className="py-4 px-6 text-center">Total Dues</th>
+                <th className="py-4 px-6 text-center">Next Due Date</th>
+                <th className="py-4 px-6 text-center">Status</th>
+                <th className="py-4 px-6 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="py-8 text-center text-slate-400 font-medium text-sm">
+                    No students match the search criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredStudents.map((student) => (
+                  <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-4 px-6 text-left">
+                      <div>
+                        <div className="font-bold text-slate-900">{student.name}</div>
+                        <div className="text-xs text-slate-500 font-mono">{student.id}</div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 text-center font-semibold text-slate-800">{student.class}</td>
+                    <td className="py-4 px-6 text-center">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold ${student.duesCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'}`}>
+                        {student.duesCount} pending
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-center font-bold text-[#2D4A3E]">
+                      ₹{student.totalPending.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-4 px-6 text-center text-slate-500 font-medium">{student.earliestDueDate}</td>
+                    <td className="py-4 px-6 text-center">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${student.status === 'All Paid'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : student.status === 'Overdue'
+                          ? 'bg-rose-100 text-rose-800'
+                          : 'bg-amber-100 text-amber-800'
+                        }`}>
+                        {student.status}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-center">
+                      <div className="flex justify-center space-x-2">
+                        <button
+                          onClick={() => openReminderModal(student, `Overdue Reminder: Please settle outstanding fees of ₹ ${student.totalPending.toLocaleString()} immediately.`)}
+                          disabled={student.duesCount === 0}
+                          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${student.duesCount === 0
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            : 'bg-amber-50 text-amber-700 hover:bg-[#D4AF37] hover:text-white border border-amber-200'
+                            }`}
+                        >
+                          <Bell className="w-3.5 h-3.5" />
+                          <span>Remind</span>
+                        </button>
+                        <button
+                          onClick={() => openChargeModal(student)}
+                          className="flex items-center space-x-1.5 bg-[#2D4A3E]/10 text-[#2D4A3E] hover:bg-[#2D4A3E] hover:text-white border border-[#2D4A3E]/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Charge</span>
+                        </button>
+                        <button
+                          onClick={() => setSelectedStudent(student)}
+                          className="flex items-center space-x-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
+                        >
+                          <span>Details</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Selected Student Details Sub-Panel */}
+      {selectedStudent && !showChargeModal && !showReminderModal && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 animate-in fade-in duration-300 relative">
+          <button
+            onClick={() => setSelectedStudent(null)}
+            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="flex flex-col md:flex-row justify-between md:items-center pb-6 border-b border-slate-100 gap-4">
+            <div>
+              <h4 className="text-lg font-bold text-[#2D4A3E]">Detailed Fee Ledger: {selectedStudent.name}</h4>
+              <p className="text-xs text-slate-400 mt-1">Student ID: {selectedStudent.id} | Class: {selectedStudent.class} | Email: {selectedStudent.email}</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => openReminderModal(selectedStudent, `Fee Alert: Settle your upcoming fee installments.`)}
+                className="bg-amber-50 text-amber-700 hover:bg-[#D4AF37] hover:text-white border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-sm"
+              >
+                <Bell className="w-4 h-4" />
+                <span>Send Custom Reminder</span>
+              </button>
+              <button
+                onClick={() => openChargeModal(selectedStudent)}
+                className="bg-[#2D4A3E] text-white hover:bg-[#1E332A] px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Charge New Fee</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
+
+            {/* Dues sub-table */}
+            <div>
+              <h5 className="font-bold text-sm text-[#2D4A3E] uppercase tracking-wider mb-3">Pending Charges</h5>
+              <div className="border border-slate-150 rounded-xl overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-150">
+                    <tr>
+                      <th className="py-2.5 px-4">Fee Category</th>
+                      <th className="py-2.5 px-4 text-center">Due Date</th>
+                      <th className="py-2.5 px-4 text-right">Amount</th>
+                      <th className="py-2.5 px-4 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {selectedStudent.data.upcoming.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="py-6 text-center text-slate-400 font-medium">No pending fees.</td>
+                      </tr>
+                    ) : (
+                      selectedStudent.data.upcoming.map(item => (
+                        <tr key={item.id} className="hover:bg-slate-50/50">
+                          <td className="py-3 px-4 font-medium text-slate-800">{item.feeCategory}</td>
+                          <td className="py-3 px-4 text-center text-slate-500">{item.dueDate}</td>
+                          <td className="py-3 px-4 text-right font-bold text-[#2D4A3E]">{item.amountToBePaid}</td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${item.status === 'Overdue' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
+                              {item.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Paid History sub-table */}
+            <div>
+              <h5 className="font-bold text-sm text-[#2D4A3E] uppercase tracking-wider mb-3">Payment Receipts</h5>
+              <div className="border border-slate-150 rounded-xl overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-150">
+                    <tr>
+                      <th className="py-2.5 px-4">Fee Category</th>
+                      <th className="py-2.5 px-4 text-center">Date & Time</th>
+                      <th className="py-2.5 px-4 text-center">Transaction ID</th>
+                      <th className="py-2.5 px-4 text-right">Amount Paid</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {selectedStudent.data.history.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="py-6 text-center text-slate-400 font-medium">No payment history found.</td>
+                      </tr>
+                    ) : (
+                      selectedStudent.data.history.map(item => (
+                        <tr key={item.id} className="hover:bg-slate-50/50">
+                          <td className="py-3 px-4 font-medium text-slate-800">{item.feeCategory}</td>
+                          <td className="py-3 px-4 text-center text-slate-500">{item.paymentDateTime.split(' • ')[0]}</td>
+                          <td className="py-3 px-4 text-center font-mono text-[10px] text-slate-500">{item.transactionId}</td>
+                          <td className="py-3 px-4 text-right font-bold text-emerald-600">{item.amountPaid}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Charge Fee Modal */}
+      {showChargeModal && selectedStudent && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 bg-[#2D4A3E] text-white flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <Plus className="w-5 h-5 text-[#D4AF37]" />
+                <h4 className="font-bold">Charge Fee: {selectedStudent.id}</h4>
+              </div>
+              <button
+                onClick={() => setShowChargeModal(false)}
+                className="text-slate-300 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleChargeFeeSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Fee Category</label>
+                <select
+                  required
+                  value={newFee.category}
+                  onChange={(e) => setNewFee({ ...newFee, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                >
+                  <option value="">Select Category...</option>
+                  <option value="Quarterly Fee (Installment 3 of 4)">Quarterly Fee (Installment 3 of 4)</option>
+                  <option value="Exam Fee (Semester 2)">Exam Fee (Semester 2)</option>
+                  <option value="Library Fine">Library Fine</option>
+                  <option value="Sports Tournament Fee">Sports Tournament Fee</option>
+                  <option value="Transport Fee (Term 3)">Transport Fee (Term 3)</option>
+                  <option value="Science Lab Equipment Charge">Science Lab Equipment Charge</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Amount (INR ₹)</label>
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    placeholder="1000"
+                    value={newFee.amount}
+                    onChange={(e) => setNewFee({ ...newFee, amount: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Academic Year</label>
+                  <input
+                    required
+                    type="text"
+                    value={newFee.academicYear}
+                    onChange={(e) => setNewFee({ ...newFee, academicYear: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Due Date</label>
+                <input
+                  required
+                  type="date"
+                  value={newFee.dueDate}
+                  onChange={(e) => setNewFee({ ...newFee, dueDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                />
+              </div>
+
+              <div className="pt-4 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowChargeModal(false)}
+                  className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2D4A3E] text-white rounded-xl text-sm font-semibold hover:bg-[#1E332A] transition-colors shadow-sm"
+                >
+                  Charge Account
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Send Reminder Modal */}
+      {showReminderModal && selectedStudent && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 bg-[#2D4A3E] text-white flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <Bell className="w-5 h-5 text-[#D4AF37]" />
+                <h4 className="font-bold">Send Reminder: {selectedStudent.id}</h4>
+              </div>
+              <button
+                onClick={() => setShowReminderModal(false)}
+                className="text-slate-300 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendReminderSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Student Details</label>
+                <div className="bg-[#2D4A3E]/5 p-3 rounded-xl border border-[#2D4A3E]/10 space-y-1">
+                  <p className="text-xs font-bold text-[#2D4A3E]">{selectedStudent.name}</p>
+                  <p className="text-[10px] text-slate-500">Roll No: {selectedStudent.rollNo} | Class: {selectedStudent.class}</p>
+                  <p className="text-[10px] text-slate-500">Outstanding: <span className="font-bold text-rose-600">₹{selectedStudent.totalPending.toLocaleString()}</span></p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Reminder Notice Text</label>
+                <textarea
+                  required
+                  rows="4"
+                  value={reminderText}
+                  onChange={(e) => setReminderText(e.target.value)}
+                  placeholder="Enter notice text here..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="isImportant"
+                  checked={isImportant}
+                  onChange={(e) => setIsImportant(e.target.checked)}
+                  className="h-4 w-4 border-slate-300 rounded text-[#2D4A3E] focus:ring-[#2D4A3E]"
+                />
+                <label htmlFor="isImportant" className="text-xs text-slate-600 font-medium cursor-pointer">
+                  Mark notice as Important (Red badge with flashing dot)
+                </label>
+              </div>
+
+              <div className="pt-4 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowReminderModal(false)}
+                  className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#D4AF37] text-white rounded-xl text-sm font-semibold hover:bg-yellow-600 transition-colors shadow-sm flex items-center justify-center space-x-1.5"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Send Notification</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Student Modal */}
+      {showAddStudentModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 bg-[#2D4A3E] text-white flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <UserPlus className="w-5 h-5 text-[#D4AF37]" />
+                <h4 className="font-bold">Add Student to Directory</h4>
+              </div>
+              <button
+                onClick={() => setShowAddStudentModal(false)}
+                className="text-slate-300 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateStudentSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Student ID</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="STD-103"
+                    value={newStudent.id}
+                    onChange={(e) => setNewStudent({ ...newStudent, id: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                  />
+                  <p className="text-[9px] text-slate-400 mt-1">Must start with STD- or PAR-</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Roll Number</label>
+                  <input
+                    type="text"
+                    placeholder="STD0103"
+                    value={newStudent.rollNo}
+                    onChange={(e) => setNewStudent({ ...newStudent, rollNo: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Full Name</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="Ramu Sain"
+                  value={newStudent.name}
+                  onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Class / Grade</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="9th B"
+                    value={newStudent.class}
+                    onChange={(e) => setNewStudent({ ...newStudent, class: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Parent Mobile</label>
+                  <input
+                    type="text"
+                    placeholder="+91 XXXXX XXXXX"
+                    value={newStudent.parentMobile}
+                    onChange={(e) => setNewStudent({ ...newStudent, parentMobile: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Email Address</label>
+                <input
+                  type="email"
+                  placeholder="ramu.sain@scholify.com"
+                  value={newStudent.email}
+                  onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+                />
+              </div>
+
+              <div className="pt-4 flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddStudentModal(false)}
+                  className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2D4A3E] text-white rounded-xl text-sm font-semibold hover:bg-[#1E332A] transition-colors shadow-sm"
+                >
+                  Create Student
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LandingPageView({ onLogin, showLoginModal, setShowLoginModal }) {
+  const [openFaq, setOpenFaq] = useState(null);
+
+  const faqs = [
+    {
+      q: "How do I log in to the school portals?",
+      a: "You can sign in using simulated registration codes. Standard test profiles include: ADM-123 (Admin), PRO-123 (Professor), VEN-123 (Vendor), STD-0727 (Student), or PAR-0123 (Parent)."
+    },
+    {
+      q: "Can administrators add new students and parents?",
+      a: "Yes! In the Admin Fee Management tab, admins can dynamically register new student details. The newly added registration number can then be used to log in directly."
+    },
+    {
+      q: "How does the Invoice Scanner work?",
+      a: "The Scanner utilizes automated parser simulations (integrated with database logs) to read uploaded PDF invoice receipts and calculate outstanding liabilities."
+    },
+    {
+      q: "Is there a real budget allocation system?",
+      a: "Yes. Department heads can submit budget requests, and admins can approve them or put them up for vendor auction bidding."
+    }
+  ];
+
+  const toggleFaq = (index) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#162820] text-slate-100 font-sans antialiased overflow-x-hidden selection:bg-[#D4AF37] selection:text-[#162820]">
+      {/* Header / Nav */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-[#162820]/80 backdrop-blur-md border-b border-white/5 transition-all">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+          <div className="flex items-center space-x-2 cursor-pointer">
+            <div className="bg-[#D4AF37] p-2 rounded-xl">
+              <Building className="w-5 h-5 text-[#2D4A3E]" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-white flex items-center">
+              Scholi<span className="text-[#D4AF37]">Fi</span>
+            </span>
+          </div>
+
+          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-300">
+            <a href="#about" className="hover:text-white transition-colors">About</a>
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#testimonials" className="hover:text-white transition-colors">Testimonials</a>
+            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
+          </nav>
+
+          <div>
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="bg-[#D4AF37] hover:bg-yellow-600 text-[#162820] font-semibold px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg hover:shadow-yellow-500/10"
+            >
+              Sign In
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section id="about" className="relative min-h-[90vh] flex items-center justify-center pt-24 overflow-hidden">
+        {/* Background Image with Dark Overlays */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url('/scholifi_hero_bg.png')` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#162820]/95 via-[#162820]/75 to-[#162820]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(45,74,62,0.4)_0%,rgba(22,40,32,0.95)_100%)]" />
+
+        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+          <h1 className="text-4xl sm:text-6xl font-bold text-white tracking-tight leading-tight sm:leading-none">
+            School Intelligence That <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-yellow-100 to-[#D4AF37]">Lights the Way</span>
+          </h1>
+
+          <p className="text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto font-medium">
+            ScholiFi connects teachers, students, parents, and administrators in a single, secure, and beautiful portal to automate fees, budgets, and communication.
+          </p>
+
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-4">
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="w-full sm:w-auto bg-white hover:bg-slate-100 text-[#162820] font-bold px-8 py-4 rounded-xl shadow-2xl transition-all flex items-center justify-center space-x-2"
+            >
+              <span>Enter Portal</span>
+            </button>
+            <a
+              href="#features"
+              className="w-full sm:w-auto border border-white/20 hover:border-white/50 hover:bg-white/5 text-white font-bold px-8 py-4 rounded-xl transition-all flex items-center justify-center"
+            >
+              Explore Features
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section id="features" className="py-24 bg-[#0E1A15] border-y border-white/5 relative">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Our Unified School Ecosystem</h2>
+            <p className="text-slate-400">All the tools you need to run, track, and optimize your school operations seamlessly.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
+              <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
+                <CreditCard className="w-6 h-6 text-[#D4AF37]" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Fee Administration</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Set custom charges (like library or science fees), log payouts, and automatically notify parents through direct student notice alerts.
+              </p>
+            </div>
+
+            <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
+              <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
+                <ScanLine className="w-6 h-6 text-[#D4AF37]" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Invoice OCR Scanner</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Upload and scan PDF receipts to extract department liabilities. Keep school ledger balances perfectly adjusted.
+              </p>
+            </div>
+
+            <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
+              <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
+                <Gavel className="w-6 h-6 text-[#D4AF37]" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Vendor Bidding</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Publish open department requests to the Auction House where verified suppliers submit bids to supply school inventory.
+              </p>
+            </div>
+
+            <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
+              <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
+                <Wallet className="w-6 h-6 text-[#D4AF37]" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Staff Payroll</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Simulate take-home salary increments using tax models, approve salary hikes, and log teacher payroll history logs.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section id="testimonials" className="py-24 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Trusted by Leading Educators</h2>
+            <p className="text-slate-400">Read what administrators, parents, and teachers say about our modern academic portal.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-[#162820]/20 p-8 rounded-2xl border border-white/5 space-y-6">
+              <div className="flex text-[#D4AF37] space-x-1">
+                {[...Array(5)].map((_, i) => <Award key={i} className="w-4 h-4 fill-[#D4AF37]" />)}
+              </div>
+              <p className="text-slate-300 italic text-sm leading-relaxed">
+                "ScholiFi completely automated our bidding process and saved us over ₹ 2.5 Lakhs this semester alone."
+              </p>
+              <div className="flex items-center space-x-3 pt-2">
+                <div className="bg-[#D4AF37]/10 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-[#D4AF37]">
+                  DKG
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Dr. K. Gupta</h4>
+                  <p className="text-[11px] text-slate-500">School Principal</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#162820]/20 p-8 rounded-2xl border border-white/5 space-y-6">
+              <div className="flex text-[#D4AF37] space-x-1">
+                {[...Array(5)].map((_, i) => <Award key={i} className="w-4 h-4 fill-[#D4AF37]" />)}
+              </div>
+              <p className="text-slate-300 italic text-sm leading-relaxed">
+                "The fee reminder feature is a lifesaver. I can pay instantly and download my receipts directly from my phone."
+              </p>
+              <div className="flex items-center space-x-3 pt-2">
+                <div className="bg-[#D4AF37]/10 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-[#D4AF37]">
+                  AS
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Aryan's Parent</h4>
+                  <p className="text-[11px] text-slate-500">Guardian Portal user</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#162820]/20 p-8 rounded-2xl border border-white/5 space-y-6">
+              <div className="flex text-[#D4AF37] space-x-1">
+                {[...Array(5)].map((_, i) => <Award key={i} className="w-4 h-4 fill-[#D4AF37]" />)}
+              </div>
+              <p className="text-slate-300 italic text-sm leading-relaxed">
+                "Managing grade approvals and tracking CS department budgets has never been so seamless."
+              </p>
+              <div className="flex items-center space-x-3 pt-2">
+                <div className="bg-[#D4AF37]/10 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-[#D4AF37]">
+                  RRP
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Prof. R. Roy</h4>
+                  <p className="text-[11px] text-slate-500">Department Head</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+
+      {/* FAQs */}
+      <section id="faq" className="py-24 max-w-4xl mx-auto px-6">
+        <div className="text-center mb-16 space-y-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Frequently Asked Questions</h2>
+          <p className="text-slate-400">Everything you need to know about navigating the ScholiFi dashboard portals.</p>
+        </div>
+
+        <div className="space-y-4">
+          {faqs.map((faq, index) => {
+            const isOpen = openFaq === index;
+            return (
+              <div key={index} className="bg-[#162820]/40 rounded-2xl border border-white/5 overflow-hidden transition-all">
+                <button
+                  onClick={() => toggleFaq(index)}
+                  className="w-full px-6 py-5 flex justify-between items-center text-left hover:bg-white/5 transition-colors"
+                >
+                  <span className="font-bold text-white text-sm sm:text-base">{faq.q}</span>
+                  <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-[#D4AF37]' : ''}`} />
+                </button>
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-48' : 'max-h-0'}`}>
+                  <p className="px-6 pb-6 text-xs sm:text-sm text-slate-400 leading-relaxed border-t border-white/5 pt-4">
+                    {faq.a}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/5 py-12 bg-[#0E1A15]">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500">
+          <div className="flex items-center space-x-2">
+            <Building className="w-4 h-4 text-[#D4AF37]" />
+            <span className="font-bold text-white">ScholiFi</span>
+          </div>
+          <p>© 2026 ScholiFi. All rights reserved.</p>
+        </div>
+      </footer>
+
+      {/* Sign In Overlay Modal */}
+      {showLoginModal && (
+        <LoginView onLogin={onLogin} onClose={() => setShowLoginModal(false)} />
       )}
     </div>
   );

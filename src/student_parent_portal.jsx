@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, CreditCard, History, Building, LogOut, Download, X, FileText, CheckCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import html2pdf from 'html2pdf.js';
@@ -11,70 +11,141 @@ export default function StudentParentPortal({ user, onLogout }) {
 
   const studentName = user.id;
 
-  // Mock Data, should be removed/modified
-  const notices = [
-    { id: 1, text: '2 days left for fee payment', isImportant: true }
-  ];
+  // Dynamically resolve student details based on ID
+  const getStudentDetails = (id) => {
+    const savedStudents = localStorage.getItem('scholifi_fee_students');
+    if (savedStudents) {
+      try {
+        const list = JSON.parse(savedStudents);
+        const match = list.find(s => s.id.toUpperCase() === id.toUpperCase());
+        if (match) {
+          return {
+            class: match.class,
+            rollNo: match.rollNo || match.id.replace(/[^\d]/g, '') || 'STD-NEW',
+            email: match.email || `${match.id.toLowerCase()}@scholify.com`,
+            parentMobile: match.parentMobile || '+91 99999 88888'
+          };
+        }
+      } catch (e) {}
+    }
 
-  // Mock Data, representing the table, should be edited to editor's choice
-  const [paymentHistory, setPaymentHistory] = useState([
-    {
-      id: '1',
-      academicYear: '2026-2027',
-      feeCategory: 'Quarterly Fee',
-      amountPaid: '₹ 1,800.00',
-      paymentDateTime: 'Mar 05, 2026 • 02:45 PM',
-      transactionId: '#TXN-2026-8941',
-      receiptNo: 'REC-2026-8941',
-      paymentStatus: 'Success',
-      paymentMethod: 'Netbanking',
-      paymentType: 'Installment (1 of 4)',
-      description: 'Quarterly Fee (Term 1 - Installment 1 of 4)',
-      subtotal: '1,800.00',
-      lateFine: '0.00',
-      discount: '0.00',
-      words: 'One Thousand Eight Hundred Rupees Only.',
-    },
-    {
-      id: '2',
-      academicYear: '2026-2027',
-      feeCategory: 'Transport Fee',
-      amountPaid: '₹ 800.00',
-      paymentDateTime: 'Mar 05, 2026 • 09:15 AM',
-      transactionId: '#TXN-2025-1092',
-      receiptNo: 'REC-2025-1092',
-      paymentStatus: 'Success',
-      paymentMethod: 'UPI',
-      paymentType: 'Full',
-      description: 'Transport Fee (Term 1)',
-      subtotal: '800.00',
-      lateFine: '0.00',
-      discount: '0.00',
-      words: 'Eight Hundred Rupees Only.',
-    },
-  ]);
+    const stdId = id.toUpperCase();
+    if (stdId === 'STD-101') {
+      return { class: '8th B', rollNo: 'STD0101', email: 'student.101@scholify.com', parentMobile: '+91 99988 87701' };
+    } else if (stdId === 'STD-102') {
+      return { class: '6th C', rollNo: 'STD0102', email: 'student.102@scholify.com', parentMobile: '+91 99988 87702' };
+    }
+    // Default fallback (including STD-0727)
+    return { class: '7th A', rollNo: 'STD0727', email: 'student.0727555@scholify.com', parentMobile: '+91 55566 60777' };
+  };
 
-  // Mock Data, representing the table, should be edited to editor's choice
-  const [upcomingPayments, setUpcomingPayments] = useState([
-    {
-      id: '1',
-      academicYear: '2026-2027',
-      feeCategory: 'Quarterly Fee (Installment 2 of 4)',
-      amountToBePaid: '₹ 1,800.00',
-      penalty: 'NA',
-      dueDate: 'Aug 15, 2026',
-      status: 'Due Soon',
-    },
-    {
-      id: '2',
-      academicYear: '2026-2027',
-      feeCategory: 'Transport Fee (Term 2)',
-      amountToBePaid: '₹ 800.00',
-      penalty: '+ ₹ 100.00 Late Fee',
-      dueDate: 'Jul 01, 2026',
-      status: 'Overdue',
-    },
-  ]);
+  const stdDetails = getStudentDetails(user.id);
+
+  // Dynamic state loaded from local storage
+  const [notices, setNotices] = useState(() => {
+    const saved = localStorage.getItem(`scholifi_notices_${user.id}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      { id: 1, text: '2 days left for fee payment', isImportant: true }
+    ];
+  });
+
+  const [paymentHistory, setPaymentHistory] = useState(() => {
+    const saved = localStorage.getItem(`scholifi_payment_history_${user.id}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      {
+        id: '1',
+        academicYear: '2026-2027',
+        feeCategory: 'Quarterly Fee',
+        amountPaid: '₹ 1,800.00',
+        paymentDateTime: 'Mar 05, 2026 • 02:45 PM',
+        transactionId: '#TXN-2026-8941',
+        receiptNo: 'REC-2026-8941',
+        paymentStatus: 'Success',
+        paymentMethod: 'Netbanking',
+        paymentType: 'Installment (1 of 4)',
+        description: 'Quarterly Fee (Term 1 - Installment 1 of 4)',
+        subtotal: '1,800.00',
+        lateFine: '0.00',
+        discount: '0.00',
+        words: 'One Thousand Eight Hundred Rupees Only.',
+      },
+      {
+        id: '2',
+        academicYear: '2026-2027',
+        feeCategory: 'Transport Fee',
+        amountPaid: '₹ 800.00',
+        paymentDateTime: 'Mar 05, 2026 • 09:15 AM',
+        transactionId: '#TXN-2025-1092',
+        receiptNo: 'REC-2025-1092',
+        paymentStatus: 'Success',
+        paymentMethod: 'UPI',
+        paymentType: 'Full',
+        description: 'Transport Fee (Term 1)',
+        subtotal: '800.00',
+        lateFine: '0.00',
+        discount: '0.00',
+        words: 'Eight Hundred Rupees Only.',
+      },
+    ];
+  });
+
+  const [upcomingPayments, setUpcomingPayments] = useState(() => {
+    const saved = localStorage.getItem(`scholifi_upcoming_payments_${user.id}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      {
+        id: '1',
+        academicYear: '2026-2027',
+        feeCategory: 'Quarterly Fee (Installment 2 of 4)',
+        amountToBePaid: '₹ 1,800.00',
+        penalty: 'NA',
+        dueDate: 'Aug 15, 2026',
+        status: 'Due Soon',
+      },
+      {
+        id: '2',
+        academicYear: '2026-2027',
+        feeCategory: 'Transport Fee (Term 2)',
+        amountToBePaid: '₹ 800.00',
+        penalty: '+ ₹ 100.00 Late Fee',
+        dueDate: 'Jul 01, 2026',
+        status: 'Overdue',
+      },
+    ];
+  });
+
+  // Effects to synchronize state changes back to local storage
+  useEffect(() => {
+    localStorage.setItem(`scholifi_notices_${user.id}`, JSON.stringify(notices));
+  }, [notices, user.id]);
+
+  useEffect(() => {
+    localStorage.setItem(`scholifi_payment_history_${user.id}`, JSON.stringify(paymentHistory));
+  }, [paymentHistory, user.id]);
+
+  useEffect(() => {
+    localStorage.setItem(`scholifi_upcoming_payments_${user.id}`, JSON.stringify(upcomingPayments));
+  }, [upcomingPayments, user.id]);
 
   const confirmFeePayment = () => {
     setPaymentConfirmed(true);
@@ -200,23 +271,19 @@ export default function StudentParentPortal({ user, onLogout }) {
                     </div>
                     <div className="flex justify-between items-center py-3">
                       <span className="text-sm font-semibold text-slate-500">Class</span>
-                      {/* Mock Data, should be altered to use database */}
-                      <span className="text-sm font-bold text-slate-800">7th A</span>
+                      <span className="text-sm font-bold text-slate-800">{stdDetails.class}</span>
                     </div>
                     <div className="flex justify-between items-center py-3">
                       <span className="text-sm font-semibold text-slate-500">Roll No.</span>
-                      {/* Mock Data, should be altered to use database */}
-                      <span className="text-sm font-bold text-slate-800">STD0727</span>
+                      <span className="text-sm font-bold text-slate-800">{stdDetails.rollNo}</span>
                     </div>
                     <div className="flex justify-between items-center py-3">
                       <span className="text-sm font-semibold text-slate-500">Email</span>
-                      {/* Mock Data, should be altered to use database */}
-                      <span className="text-sm font-bold text-slate-800">student.0727555@scholify.com</span>
+                      <span className="text-sm font-bold text-slate-800">{stdDetails.email}</span>
                     </div>
                     <div className="flex justify-between items-center py-3">
                       <span className="text-sm font-semibold text-slate-500">Parent Mobile No.</span>
-                      {/* Mock Data, should be altered to use database */}
-                      <span className="text-sm font-bold text-slate-800">+91 55566 60777</span>
+                      <span className="text-sm font-bold text-slate-800">{stdDetails.parentMobile}</span>
                     </div>
                   </div>
                 </div>
