@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Wallet, Store, CheckCircle, FileText, Building, LineChart as ChartIcon, UserPlus, LogOut, Sparkles, X, Gavel } from 'lucide-react'; // Added 'X' icon for the close button
+import { LayoutDashboard, Wallet, Store, CheckCircle, FileText, Building, LineChart as ChartIcon, UserPlus, LogOut, Sparkles, X, Gavel, ScanLine, Upload, Loader2, AlertTriangle, TrendingUp, Percent, Users, Award } from 'lucide-react'; // Added 'X' icon for the close button
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react'; // --- NEW IMPORT ---
 import { supabase } from './supabaseClient';
@@ -35,6 +35,59 @@ export default function App() {
   const [profRequests, setProfRequests] = useState([]);
   const [vendorProducts, setVendorProducts] = useState(INITIAL_PRODUCTS);
   const [financeData, setFinanceData] = useState(INITIAL_FINANCE_DATA);
+
+  const [teachersSalaries, setTeachersSalaries] = useState(() => {
+    const saved = localStorage.getItem('scholifi_teacher_salaries');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse saved salaries, using default", e);
+      }
+    }
+    return [
+      {
+        id: 'PRO-101',
+        name: 'Prof. Rajesh Kumar',
+        department: 'Computer Science',
+        currentSalary: 120000,
+        hikeHistory: [
+          { date: '2026-01-15', percentage: 10, prevSalary: 109090, newSalary: 120000 }
+        ]
+      },
+      {
+        id: 'PRO-102',
+        name: 'Prof. Anjali Sharma',
+        department: 'Chemistry',
+        currentSalary: 95000,
+        hikeHistory: [
+          { date: '2026-02-10', percentage: 5, prevSalary: 90476, newSalary: 95000 }
+        ]
+      },
+      {
+        id: 'PRO-103',
+        name: 'Prof. Amit Patel',
+        department: 'Administration',
+        currentSalary: 110000,
+        hikeHistory: [
+          { date: '2026-03-01', percentage: 8, prevSalary: 101851, newSalary: 110000 }
+        ]
+      },
+      {
+        id: 'PRO-104',
+        name: 'Prof. Sneha Reddy',
+        department: 'Sports',
+        currentSalary: 80000,
+        hikeHistory: [
+          { date: '2026-04-12', percentage: 6, prevSalary: 75471, newSalary: 80000 }
+        ]
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('scholifi_teacher_salaries', JSON.stringify(teachersSalaries));
+  }, [teachersSalaries]);
 
   // --- NEW: Fetch Initial Data from Supabase ---
   useEffect(() => {
@@ -129,10 +182,11 @@ export default function App() {
     return <StudentParentPortal user={user} onLogout={() => setUser(null)} />;
   }
 
-  // --- MENU FILTERING BASED ON ROLE ---
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard />, roles: ['Admin', 'Professor', 'Vendor'] },
     { id: 'requests', label: 'Budget Requests', icon: <FileText />, roles: ['Admin', 'Professor'] },
+    { id: 'scanner', label: 'Invoice Scanner', icon: <ScanLine />, roles: ['Admin', 'Professor'] },
+    { id: 'salaries', label: 'Salary Portal', icon: <Wallet />, roles: ['Admin', 'Professor'] },
     { id: 'auction', label: 'Auction Center', icon: <Gavel />, roles: ['Admin'] }, // <-- NEW TAB
     { id: 'vendor', label: 'Vendor Portal', icon: <Store />, roles: ['Admin', 'Vendor'] },
     { id: 'finance', label: 'Finance Analyzer', icon: <ChartIcon />, roles: ['Admin'] },
@@ -195,6 +249,23 @@ export default function App() {
               financeData={financeData}
               setFinanceData={setFinanceData} // <-- ADD THIS LINE
               vendorProducts={vendorProducts}
+            />
+          )}
+          {activeTab === 'scanner' && (
+            <ScannerView
+              user={user}
+              financeData={financeData}
+              setFinanceData={setFinanceData}
+              requests={profRequests}
+              setRequests={setProfRequests}
+            />
+          )}
+          {activeTab === 'salaries' && (
+            <SalaryPortalView
+              user={user}
+              salaries={teachersSalaries}
+              setSalaries={setTeachersSalaries}
+              financeData={financeData}
             />
           )}
           {activeTab === 'auction' && (
@@ -746,16 +817,16 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
 
   return (
     <div className="space-y-6 relative">
-      721 |
-      722 |       {/* ================================================== */}
-      723 |       {/* REPLACE YOUR OLD RETURN HEADER WITH THIS:          */}
-      724 |       <VendorLiabilityModal user={user} requests={requests} setRequests={setRequests} />
-      725 |       {user.role === 'Vendor' && <VendorAuctionHouse user={user} requests={requests} vendorProducts={vendorProducts} />} {/* <-- ADD PROP HERE */}
-      726 |       {/* ================================================== */}
-      727 |
-      728 |       {user.role === 'Vendor' && (
-        729 | <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          730 |           <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Add New Catalog Item</h3>
+721 |       
+722 |       {/* ================================================== */}
+723 |       {/* REPLACE YOUR OLD RETURN HEADER WITH THIS:          */}
+724 |       <VendorLiabilityModal user={user} requests={requests} setRequests={setRequests} />
+725 |       {user.role === 'Vendor' && <VendorAuctionHouse user={user} requests={requests} vendorProducts={vendorProducts} />} {/* <-- ADD PROP HERE */}
+726 |       {/* ================================================== */}
+727 | 
+728 |       {user.role === 'Vendor' && (
+729 |         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+730 |           <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Add New Catalog Item</h3>
           <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
             {/* --- UPDATED: Category Dropdown with Custom Option --- */}
             <select
@@ -1599,8 +1670,8 @@ function VendorAuctionHouse({ user, requests, vendorProducts }) {
   // 1. Fetch existing bids when a vendor clicks an auction
   useEffect(() => {
     if (!activeBiddingId) return;
-    // ... rest of the component continues
-
+// ... rest of the component continues
+    
     const fetchBids = async () => {
       const { data } = await supabase.from('bids').select('*').eq('request_id', activeBiddingId).order('created_at', { ascending: true });
       if (data) setBids(data);
@@ -1757,6 +1828,806 @@ function VendorAuctionHouse({ user, requests, vendorProducts }) {
               </p>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- INVOICE SCANNER VIEW ---
+function ScannerView({ user, financeData, setFinanceData, requests, setRequests }) {
+  const [scanState, setScanState] = useState('idle'); // idle, scanning, result
+  const [mockInvoice, setMockInvoice] = useState(null);
+
+  const handleUpload = (type) => {
+    setScanState('scanning');
+    setTimeout(() => {
+      if (type === 'safe') {
+        setMockInvoice({
+          vendor: 'TechNova',
+          amount: 25000,
+          dept: 'Computer Science',
+          items: [{ desc: 'Student Chromebooks (x1)', price: 25000 }]
+        });
+      } else {
+        setMockInvoice({
+          vendor: 'TechNova',
+          amount: 95000,
+          dept: 'Computer Science',
+          items: [{ desc: 'High-End Developer Laptops (x2)', price: 95000 }]
+        });
+      }
+      setScanState('result');
+    }, 2000);
+  };
+
+  const handleApprove = async () => {
+    const dept = financeData.find(d => d.name === mockInvoice.dept);
+    const verifiedCost = mockInvoice.amount;
+    const remainingBefore = dept ? (dept.budget - dept.spent) : 0;
+
+    if (verifiedCost > remainingBefore) {
+      alert('Cannot approve. Budget exceeded!');
+      return;
+    }
+
+    try {
+      // 1. Update the department spent budget in Supabase
+      const newSpentAmount = (dept.spent || 0) + verifiedCost;
+      await supabase.from('departments').update({ spent: newSpentAmount }).eq('name', mockInvoice.dept);
+
+      // 2. Insert new budget request into Supabase with 'Paid & Ordered' status
+      const newRequestPayload = {
+        prof_id: user.id,
+        department_name: mockInvoice.dept,
+        product_id: 't2', // Using student chromebook
+        vendor_id: mockInvoice.vendor,
+        quantity: 1,
+        custom_notes: 'Digitized and approved via AI OCR Scanner',
+        rfp_text: 'N/A - Direct Scan & Approval',
+        status: 'Paid & Ordered',
+        verified_cost: verifiedCost
+      };
+
+      const { data, error } = await supabase.from('budget_requests').insert([newRequestPayload]).select();
+      
+      // Update local state
+      const created = (data && data.length > 0) ? data[0] : { ...newRequestPayload, id: `local-${Math.random()}` };
+      setRequests([...requests, {
+        id: created.id,
+        profId: created.prof_id,
+        department: created.department_name,
+        quantity: created.quantity,
+        productId: created.product_id,
+        productName: mockInvoice.items[0].desc,
+        vendor: created.vendor_id,
+        customNotes: created.custom_notes,
+        rfp: created.rfp_text,
+        status: created.status,
+        budgetStatus: {
+          verifiedCost: verifiedCost,
+          remainingBudget: remainingBefore - verifiedCost,
+          isSufficient: true
+        }
+      }]);
+
+      setFinanceData(financeData.map(d => 
+        d.name === mockInvoice.dept ? { ...d, spent: newSpentAmount } : d
+      ));
+
+      alert(`Success! ₹${verifiedCost.toLocaleString()} has been spent from ${mockInvoice.dept}'s budget and PO has been created.`);
+    } catch (err) {
+      console.error("Supabase scanner approval failed:", err);
+      alert("Error approving scan: " + err.message);
+    }
+
+    setScanState('idle');
+    setMockInvoice(null);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h3 className="text-xl font-bold text-[#2D4A3E] mb-2 flex items-center">
+          <ScanLine className="w-6 h-6 mr-2 text-[#D4AF37]" /> AI-Powered Invoice Digitizer
+        </h3>
+        <p className="text-sm text-slate-500">
+          Upload physical invoice sheets here. The system uses AI OCR to extract values and automatically matches them with the remaining department funds to prevent accidental over-spending.
+        </p>
+      </div>
+
+      {scanState === 'idle' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div
+            className="border-2 border-dashed border-[#2D4A3E]/30 rounded-3xl bg-white p-12 text-center cursor-pointer hover:bg-slate-50 hover:border-[#2D4A3E] transition-all flex flex-col justify-between h-80"
+            onClick={() => handleUpload('safe')}
+          >
+            <div>
+              <div className="bg-[#2D4A3E]/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Upload className="w-8 h-8 text-[#2D4A3E]" />
+              </div>
+              <h4 className="text-lg font-bold text-[#2D4A3E] mb-2">Simulate Safe Invoice Scan</h4>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Scan an invoice of ₹25,000 for Computer Science department supplies (Safe within budget limit).
+              </p>
+            </div>
+            <button className="bg-[#2D4A3E] text-white px-6 py-2.5 rounded-xl font-medium shadow-sm hover:bg-[#1E332A] transition-colors mt-4 self-center">
+              Scan Safe Invoice
+            </button>
+          </div>
+
+          <div
+            className="border-2 border-dashed border-[#D4AF37]/30 rounded-3xl bg-white p-12 text-center cursor-pointer hover:bg-slate-50 hover:border-[#D4AF37] transition-all flex flex-col justify-between h-80"
+            onClick={() => handleUpload('unsafe')}
+          >
+            <div>
+              <div className="bg-[#D4AF37]/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Upload className="w-8 h-8 text-[#D4AF37]" />
+              </div>
+              <h4 className="text-lg font-bold text-[#2D4A3E] mb-2">Simulate Budget-Exceeding Scan</h4>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Scan an invoice of ₹95,000 for Computer Science department (Exceeds remaining department funds).
+              </p>
+            </div>
+            <button className="bg-[#D4AF37] text-white px-6 py-2.5 rounded-xl font-medium shadow-sm hover:bg-yellow-600 transition-colors mt-4 self-center">
+              Scan Overbudget Invoice
+            </button>
+          </div>
+        </div>
+      )}
+
+      {scanState === 'scanning' && (
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-16 text-center relative overflow-hidden h-80 flex flex-col justify-center items-center">
+          <div className="absolute top-0 left-0 w-full h-1 bg-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.8)] animate-pulse z-10" />
+          <Loader2 className="w-12 h-12 text-[#2D4A3E] animate-spin mb-4" />
+          <h3 className="text-xl font-bold text-[#2D4A3E] mb-2">AI OCR Engine Active</h3>
+          <p className="text-slate-500 max-w-md">Digitizing items, extracting prices, and matching against real-time database allocations...</p>
+        </div>
+      )}
+
+      {scanState === 'result' && mockInvoice && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-bold mb-6 flex items-center text-[#2D4A3E] border-b pb-4">
+                <CheckCircle className="w-5 h-5 text-green-600 mr-2" /> Extracted Invoice Data
+              </h3>
+              <div className="space-y-4 text-sm">
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-slate-500">Supplier Vendor</span>
+                  <span className="font-semibold text-slate-800">{mockInvoice.vendor}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-slate-500">Target Department</span>
+                  <span className="font-semibold text-slate-800">{mockInvoice.dept}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-slate-500">Total Invoice Amount</span>
+                  <span className="font-bold text-[#2D4A3E] text-lg">₹{mockInvoice.amount.toLocaleString()}</span>
+                </div>
+
+                <div className="mt-6">
+                  <p className="text-slate-500 font-semibold mb-2">Extracted Items</p>
+                  {mockInvoice.items.map((item, i) => (
+                    <div key={i} className="flex justify-between bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <span className="text-slate-700 font-medium">{item.desc}</span>
+                      <span className="font-bold text-[#2D4A3E]">₹{item.price.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <BudgetCheckWidget invoice={mockInvoice} financeData={financeData} />
+            <div className="flex space-x-4">
+              <button
+                onClick={() => {
+                  setScanState('idle');
+                  setMockInvoice(null);
+                }}
+                className="flex-1 bg-white border border-slate-300 text-slate-700 px-4 py-3 rounded-xl font-medium hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApprove}
+                className="flex-1 bg-[#2D4A3E] text-white px-4 py-3 rounded-xl font-medium shadow-sm hover:bg-[#1E332A] transition-colors"
+              >
+                Approve & Record Purchase
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- AUTOMATED BUDGET CHECK WIDGET ---
+function BudgetCheckWidget({ invoice, financeData }) {
+  const dept = financeData.find(d => d.name === invoice.dept);
+  const remainingBefore = dept ? (dept.budget - dept.spent) : 0;
+  const exceeds = invoice.amount > remainingBefore;
+
+  return (
+    <div className={`p-6 rounded-3xl border ${exceeds ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+      <div className="flex items-start space-x-4 mb-4">
+        {exceeds ? <AlertTriangle className="w-8 h-8 text-red-600 mt-1" /> : <CheckCircle className="w-8 h-8 text-green-600 mt-1" />}
+        <div>
+          <h4 className={`text-lg font-bold ${exceeds ? 'text-red-800' : 'text-green-800'}`}>Automated Budget Match</h4>
+          <p className={`text-sm ${exceeds ? 'text-red-600' : 'text-green-700'}`}>
+            {exceeds ? `Warning: Purchase exceeds ${dept?.name} budget!` : `Safe to proceed. Budget available.`}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2 mt-4 text-sm">
+        <div className="flex justify-between text-slate-600">
+          <span>Available Dept Funds</span>
+          <span className="font-semibold">₹{remainingBefore.toLocaleString()}</span>
+        </div>
+        <div className="flex justify-between text-slate-600">
+          <span>Invoice Digitized Amount</span>
+          <span className="font-semibold text-red-600">-₹{invoice.amount.toLocaleString()}</span>
+        </div>
+        <div className="w-full h-px bg-slate-200 my-2" />
+        <div className={`flex justify-between font-bold ${exceeds ? 'text-red-600' : 'text-green-700'}`}>
+          <span>Projected Remaining Balance</span>
+          <span>₹{(remainingBefore - invoice.amount).toLocaleString()}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- SALARY PORTAL VIEW ---
+function SalaryPortalView({ user, salaries, setSalaries, financeData }) {
+  const [activeHistoryTeacher, setActiveHistoryTeacher] = useState(null); // For history modal
+  const [recruitName, setRecruitName] = useState('');
+  const [recruitId, setRecruitId] = useState('');
+  const [recruitDept, setRecruitDept] = useState('Computer Science');
+  const [recruitSalary, setRecruitSalary] = useState('');
+  const [recruitSuccess, setRecruitSuccess] = useState('');
+  const [recruitError, setRecruitError] = useState('');
+
+  const [hikeTarget, setHikeTarget] = useState('all');
+  const [hikePercentage, setHikePercentage] = useState('');
+  const [hikeSuccess, setHikeSuccess] = useState('');
+  const [hikeError, setHikeError] = useState('');
+
+  // Professor Simulator State
+  const [hikeSimVal, setHikeSimVal] = useState(0);
+
+  // Derive metrics
+  const totalPayroll = salaries.reduce((acc, curr) => acc + curr.currentSalary, 0);
+  const avgSalary = salaries.length > 0 ? Math.round(totalPayroll / salaries.length) : 0;
+  const activeStaff = salaries.length;
+
+  // Calculate average hike
+  let allHikePercentages = [];
+  salaries.forEach(t => {
+    if (t.hikeHistory && t.hikeHistory.length > 0) {
+      t.hikeHistory.forEach(h => {
+        allHikePercentages.push(h.percentage);
+      });
+    }
+  });
+  const avgHike = allHikePercentages.length > 0 
+    ? (allHikePercentages.reduce((a, b) => a + b, 0) / allHikePercentages.length).toFixed(1)
+    : '0.0';
+
+  // Recruit new teacher
+  const handleRecruit = (e) => {
+    e.preventDefault();
+    setRecruitSuccess('');
+    setRecruitError('');
+
+    if (!recruitName.trim()) {
+      setRecruitError('Please enter a valid name.');
+      return;
+    }
+    const cleanId = recruitId.trim().toUpperCase();
+    if (!cleanId.startsWith('PRO-')) {
+      setRecruitError('Teacher ID must start with "PRO-" prefix.');
+      return;
+    }
+    if (salaries.some(t => t.id === cleanId)) {
+      setRecruitError(`Teacher ID ${cleanId} is already in use.`);
+      return;
+    }
+    const startingSalary = parseFloat(recruitSalary);
+    if (isNaN(startingSalary) || startingSalary <= 0) {
+      setRecruitError('Starting salary must be a positive number.');
+      return;
+    }
+
+    const newTeacher = {
+      id: cleanId,
+      name: recruitName.trim(),
+      department: recruitDept,
+      currentSalary: startingSalary,
+      hikeHistory: []
+    };
+
+    setSalaries([...salaries, newTeacher]);
+    setRecruitSuccess(`Successfully recruited ${newTeacher.name} (${newTeacher.id})!`);
+    
+    // Clear form
+    setRecruitName('');
+    setRecruitId('');
+    setRecruitSalary('');
+  };
+
+  // Apply salary hike
+  const handleApplyHike = (e) => {
+    e.preventDefault();
+    setHikeSuccess('');
+    setHikeError('');
+
+    const percentage = parseFloat(hikePercentage);
+    if (isNaN(percentage) || percentage <= 0 || percentage > 100) {
+      setHikeError('Please enter a valid hike percentage (0 - 100%).');
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    if (hikeTarget === 'all') {
+      const updated = salaries.map(t => {
+        const prev = t.currentSalary;
+        const next = Math.round(prev * (1 + percentage / 100));
+        return {
+          ...t,
+          currentSalary: next,
+          hikeHistory: [
+            ...(t.hikeHistory || []),
+            { date: todayStr, percentage, prevSalary: prev, newSalary: next }
+          ]
+        };
+      });
+      setSalaries(updated);
+      setHikeSuccess(`Successfully applied a ${percentage}% salary hike to all staff members!`);
+    } else {
+      const updated = salaries.map(t => {
+        if (t.id === hikeTarget) {
+          const prev = t.currentSalary;
+          const next = Math.round(prev * (1 + percentage / 100));
+          return {
+            ...t,
+            currentSalary: next,
+            hikeHistory: [
+              ...(t.hikeHistory || []),
+              { date: todayStr, percentage, prevSalary: prev, newSalary: next }
+            ]
+          };
+        }
+        return t;
+      });
+      setSalaries(updated);
+      const targetTeacher = salaries.find(t => t.id === hikeTarget);
+      setHikeSuccess(`Successfully applied a ${percentage}% salary hike to ${targetTeacher.name}!`);
+    }
+
+    setHikePercentage('');
+  };
+
+  // Tax and net take home calculations for Simulator (Professor View)
+  const calculateTakeHome = (monthlyGross) => {
+    let tax = 0;
+    if (monthlyGross > 150000) {
+      tax += (monthlyGross - 150000) * 0.30;
+      tax += 50000 * 0.20;
+      tax += 50000 * 0.10;
+    } else if (monthlyGross > 100000) {
+      tax += (monthlyGross - 100000) * 0.20;
+      tax += 50000 * 0.10;
+    } else if (monthlyGross > 50000) {
+      tax += (monthlyGross - 50000) * 0.10;
+    }
+    const net = monthlyGross - tax;
+    return { tax, net };
+  };
+
+  // Find logged in professor info if user is Professor
+  const profInfo = user.role === 'Professor' ? salaries.find(t => t.id === user.id) : null;
+  const simulatedSalary = profInfo ? Math.round(profInfo.currentSalary * (1 + hikeSimVal / 100)) : 0;
+  const simulatedCTC = simulatedSalary * 12;
+  const { tax: simulatedTax, net: simulatedNet } = calculateTakeHome(simulatedSalary);
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h3 className="text-xl font-bold text-[#2D4A3E] mb-2 flex items-center">
+          <Wallet className="w-6 h-6 mr-2 text-[#D4AF37]" /> Salary & Compensation Portal
+        </h3>
+        <p className="text-sm text-slate-500">
+          Secure portal to manage academic salaries, review payroll distribution, and model compensation enhancements.
+        </p>
+      </div>
+
+      {user.role === 'Admin' && (
+        <div className="space-y-8">
+          {/* Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+              <div className="bg-[#2D4A3E]/10 p-3 rounded-xl">
+                <Wallet className="w-6 h-6 text-[#2D4A3E]" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Monthly Payroll</p>
+                <p className="text-xl font-bold text-[#2D4A3E]">₹{totalPayroll.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+              <div className="bg-[#D4AF37]/10 p-3 rounded-xl">
+                <TrendingUp className="w-6 h-6 text-[#D4AF37]" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Average Salary</p>
+                <p className="text-xl font-bold text-[#2D4A3E]">₹{avgSalary.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+              <div className="bg-[#2D4A3E]/10 p-3 rounded-xl">
+                <Users className="w-6 h-6 text-[#2D4A3E]" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Staff</p>
+                <p className="text-xl font-bold text-[#2D4A3E]">{activeStaff} Teachers</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+              <div className="bg-[#D4AF37]/10 p-3 rounded-xl">
+                <Percent className="w-6 h-6 text-[#D4AF37]" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Average Hike</p>
+                <p className="text-xl font-bold text-[#2D4A3E]">{avgHike}%</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Staff Directory Table */}
+            <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h3 className="text-lg font-bold text-[#2D4A3E] mb-4 flex items-center">
+                <Users className="w-5 h-5 mr-2 text-[#D4AF37]" /> Staff Payroll Directory
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-700">
+                  <thead>
+                    <tr className="border-b text-slate-400 uppercase tracking-wider text-[11px]">
+                      <th className="py-3 px-2">ID</th>
+                      <th className="py-3 px-2">Name</th>
+                      <th className="py-3 px-2">Dept</th>
+                      <th className="py-3 px-2 text-right">Monthly</th>
+                      <th className="py-3 px-2 text-right">Annual CTC</th>
+                      <th className="py-3 px-2 text-center">Hikes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {salaries.map(teacher => {
+                      const lastHike = teacher.hikeHistory && teacher.hikeHistory.length > 0 
+                        ? teacher.hikeHistory[teacher.hikeHistory.length - 1] 
+                        : null;
+                      return (
+                        <tr key={teacher.id} className="border-b hover:bg-slate-50">
+                          <td className="py-4 px-2 font-mono font-bold text-xs text-[#D4AF37]">{teacher.id}</td>
+                          <td className="py-4 px-2 font-bold text-[#2D4A3E]">{teacher.name}</td>
+                          <td className="py-4 px-2 text-slate-500">{teacher.department}</td>
+                          <td className="py-4 px-2 text-right font-bold">₹{teacher.currentSalary.toLocaleString()}</td>
+                          <td className="py-4 px-2 text-right text-slate-500 font-medium">₹{(teacher.currentSalary * 12).toLocaleString()}</td>
+                          <td className="py-4 px-2 text-center">
+                            <button
+                              onClick={() => setActiveHistoryTeacher(teacher)}
+                              className="text-xs border border-[#2D4A3E]/30 text-[#2D4A3E] px-2.5 py-1 rounded-lg font-medium hover:bg-[#2D4A3E] hover:text-white transition-colors"
+                            >
+                              {lastHike ? `${lastHike.percentage}% Hike` : 'No History'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Action Panels */}
+            <div className="space-y-6">
+              {/* Apply Salary Hike Form */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 className="text-lg font-bold text-[#2D4A3E] mb-4 flex items-center">
+                  <Percent className="w-5 h-5 mr-2 text-[#D4AF37]" /> Adjust Compensation
+                </h3>
+                <form onSubmit={handleApplyHike} className="space-y-4">
+                  <div>
+                    <label className="text-xs text-slate-400 uppercase font-bold block mb-1">Target Recipient</label>
+                    <select
+                      value={hikeTarget}
+                      onChange={e => setHikeTarget(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] bg-white"
+                    >
+                      <option value="all">Apply to All Staff</option>
+                      {salaries.map(t => (
+                        <option key={t.id} value={t.id}>{t.name} ({t.id})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 uppercase font-bold block mb-1">Hike Amount</label>
+                    <div className="flex space-x-2 mb-2">
+                      {[2, 5, 10].map(val => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setHikePercentage(val)}
+                          className="flex-1 border border-slate-200 py-1.5 rounded-lg text-xs font-bold hover:bg-[#2D4A3E] hover:text-white transition-all"
+                        >
+                          {val}%
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="number"
+                      placeholder="Custom Percentage (%)"
+                      value={hikePercentage}
+                      onChange={e => setHikePercentage(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]"
+                      min="0.1"
+                      max="100"
+                      step="0.1"
+                    />
+                  </div>
+
+                  {hikeError && <p className="text-xs text-red-500 font-bold">{hikeError}</p>}
+                  {hikeSuccess && <p className="text-xs text-green-600 font-bold">{hikeSuccess}</p>}
+
+                  <button
+                    type="submit"
+                    className="w-full bg-[#2D4A3E] text-white py-2.5 rounded-xl font-medium hover:bg-[#1E332A] transition-colors text-sm shadow-sm"
+                  >
+                    Apply Hike
+                  </button>
+                </form>
+              </div>
+
+              {/* Recruit New Teacher Form */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 className="text-lg font-bold text-[#2D4A3E] mb-4 flex items-center">
+                  <UserPlus className="w-5 h-5 mr-2 text-[#D4AF37]" /> Recruit Faculty
+                </h3>
+                <form onSubmit={handleRecruit} className="space-y-4">
+                  <div>
+                    <label className="text-xs text-slate-400 uppercase font-bold block mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Prof. Vikas Gupta"
+                      value={recruitName}
+                      onChange={e => setRecruitName(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 uppercase font-bold block mb-1">Teacher ID</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. PRO-202"
+                      value={recruitId}
+                      onChange={e => setRecruitId(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 uppercase font-bold block mb-1">Department</label>
+                    <select
+                      value={recruitDept}
+                      onChange={e => setRecruitDept(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] bg-white"
+                    >
+                      {financeData.map(d => (
+                        <option key={d.name} value={d.name}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 uppercase font-bold block mb-1">Monthly Salary (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 85000"
+                      value={recruitSalary}
+                      onChange={e => setRecruitSalary(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]"
+                    />
+                  </div>
+
+                  {recruitError && <p className="text-xs text-red-500 font-bold">{recruitError}</p>}
+                  {recruitSuccess && <p className="text-xs text-green-600 font-bold">{recruitSuccess}</p>}
+
+                  <button
+                    type="submit"
+                    className="w-full bg-[#D4AF37] text-white py-2.5 rounded-xl font-medium hover:bg-yellow-600 transition-colors text-sm shadow-sm"
+                  >
+                    Confirm Recruitment
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Teacher Hike History Modal */}
+          {activeHistoryTeacher && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-3xl shadow-2xl w-[450px] relative border border-slate-200">
+                <button
+                  onClick={() => setActiveHistoryTeacher(null)}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <h3 className="text-xl font-bold text-[#2D4A3E] mb-2">{activeHistoryTeacher.name}</h3>
+                <p className="text-xs text-slate-400 uppercase font-bold mb-4">{activeHistoryTeacher.id} • {activeHistoryTeacher.department}</p>
+                
+                <h4 className="font-bold text-sm text-[#2D4A3E] mb-2 border-b pb-2">Hike & Payroll Logs</h4>
+                <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
+                  {(!activeHistoryTeacher.hikeHistory || activeHistoryTeacher.hikeHistory.length === 0) ? (
+                    <p className="text-sm text-slate-400 text-center py-4">No payroll adjustments recorded yet.</p>
+                  ) : (
+                    activeHistoryTeacher.hikeHistory.map((h, i) => (
+                      <div key={i} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-xl text-sm">
+                        <div>
+                          <p className="font-bold text-[#2D4A3E]">{h.percentage}% Salary Hike</p>
+                          <p className="text-[11px] text-slate-400">Date: {h.date}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-[#D4AF37]">₹{h.newSalary.toLocaleString()}</p>
+                          <p className="text-[10px] text-slate-400">Was: ₹{h.prevSalary.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {user.role === 'Professor' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Left panel: Pay Summary & History */}
+          <div className="md:col-span-2 space-y-8">
+            {profInfo ? (
+              <>
+                {/* Compensation Card */}
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-[#D4AF37]/10 px-4 py-1 text-xs font-bold text-[#D4AF37] rounded-bl-xl uppercase">
+                    Payroll Record Active
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-400 uppercase tracking-wider mb-4">Current Compensation</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-3xl font-extrabold text-[#2D4A3E]">₹{profInfo.currentSalary.toLocaleString()}</p>
+                      <p className="text-xs text-slate-400 mt-1 uppercase font-bold">Monthly Gross Pay</p>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-extrabold text-[#D4AF37]">₹{(profInfo.currentSalary * 12).toLocaleString()}</p>
+                      <p className="text-xs text-slate-400 mt-1 uppercase font-bold">Annualized CTC</p>
+                    </div>
+                  </div>
+                  <div className="w-full h-px bg-slate-100 my-6" />
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-slate-400 text-xs">Faculty Name</p>
+                      <p className="font-bold text-[#2D4A3E] mt-0.5">{profInfo.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 text-xs">Teacher ID</p>
+                      <p className="font-mono font-bold text-[#D4AF37] mt-0.5">{profInfo.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 text-xs">Department</p>
+                      <p className="font-bold text-[#2D4A3E] mt-0.5">{profInfo.department}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* History Timeline */}
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+                  <h3 className="text-lg font-bold text-[#2D4A3E] mb-6 flex items-center border-b pb-4">
+                    <Award className="w-5 h-5 mr-2 text-[#D4AF37]" /> Adjustments Timeline
+                  </h3>
+                  {(!profInfo.hikeHistory || profInfo.hikeHistory.length === 0) ? (
+                    <p className="text-slate-400 text-sm text-center py-6">No salary adjustments have been logged for this profile yet.</p>
+                  ) : (
+                    <div className="relative pl-6 border-l-2 border-slate-100 space-y-6">
+                      {profInfo.hikeHistory.map((h, i) => (
+                        <div key={i} className="relative">
+                          <span className="absolute -left-[31px] top-1 bg-white border-2 border-[#D4AF37] w-4 h-4 rounded-full"></span>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex justify-between items-center">
+                            <div>
+                              <p className="font-bold text-[#2D4A3E]">{h.percentage}% Promotion Hike</p>
+                              <p className="text-xs text-slate-400 mt-0.5">Applied: {h.date}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-extrabold text-[#D4AF37]">₹{h.newSalary.toLocaleString()}</p>
+                              <p className="text-[10px] text-slate-400">Previous: ₹{h.prevSalary.toLocaleString()}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-slate-500">Could not retrieve salary information for {user.id}.</p>
+            )}
+          </div>
+
+          {/* Right panel: Salary Simulator */}
+          {profInfo && (
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm h-fit space-y-6">
+              <h3 className="text-lg font-bold text-[#2D4A3E] flex items-center border-b pb-4">
+                <Sparkles className="w-5 h-5 mr-2 text-[#D4AF37]" /> Income Estimator Simulator
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between text-sm">
+                  <span className="font-semibold text-slate-700">Projected Salary Increase</span>
+                  <span className="font-bold text-[#D4AF37]">{hikeSimVal}% Hike</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="30"
+                  value={hikeSimVal}
+                  onChange={e => setHikeSimVal(parseInt(e.target.value))}
+                  className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-[#2D4A3E]"
+                />
+                <div className="flex justify-between text-[11px] text-slate-400 font-bold px-1">
+                  <span>0%</span>
+                  <span>10%</span>
+                  <span>20%</span>
+                  <span>30%</span>
+                </div>
+              </div>
+
+              <div className="w-full h-px bg-slate-100 my-6" />
+
+              <div className="space-y-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Est. Monthly Gross Pay:</span>
+                  <span className="font-bold text-[#2D4A3E]">₹{simulatedSalary.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Est. Annualized CTC:</span>
+                  <span className="font-bold text-slate-800">₹{simulatedCTC.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Estimated Income Tax:</span>
+                  <span className="font-bold text-red-500">-₹{Math.round(simulatedTax).toLocaleString()}</span>
+                </div>
+                <div className="w-full h-px bg-slate-100 my-4" />
+                <div className="flex justify-between text-base font-bold bg-[#2D4A3E]/5 p-4 rounded-xl border border-[#2D4A3E]/10">
+                  <span className="text-[#2D4A3E]">Projected Take-Home:</span>
+                  <span className="text-[#D4AF37]">₹{Math.round(simulatedNet).toLocaleString()}</span>
+                </div>
+                <p className="text-[10px] text-slate-400 text-center italic mt-2">
+                  Take-home estimate is calculated using basic simulated monthly tax slabs.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
