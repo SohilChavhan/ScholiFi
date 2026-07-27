@@ -1,16 +1,30 @@
-# React + Vite
+🎓 ScholiFi: 
+School Intelligence That Lights the Way.
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+🚀 The Problem
+Modern educational institutions are often bogged down by fragmented systems. Administrators use one software for fee collection, another for staff payroll, and entirely manual processes for procurement and budget allocation. This disconnect leads to budget leaks, slow approvals, and administrative bloat.
 
-Currently, two official plugins are available:
+💡 The Solution
+ScholiFi is a unified, full-stack educational ecosystem designed to centralize and automate school operations. By leveraging intelligent algorithms and AI integrations, ScholiFi seamlessly connects administrators, professors, vendors, and parents into a single, cohesive portal. From automated fee reminders to live reverse auctions for school supplies, ScholiFi turns administrative friction into streamlined intelligence.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+✨ Key Features
+🤖 AI-Powered Procurement: Professors can generate professional Requests for Proposals (RFPs) instantly using an integrated Groq API backend, turning simple supply requests into formal vendor documents.
 
-## React Compiler
+⚖️ Vendor Reverse Auctions: A live bidding marketplace where verified suppliers—and automated market competitor simulators—compete to drive down school procurement costs in real-time.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+📈 Smart Surplus Allocator: An algorithmic engine that evaluates department burn rates and automatically distributes surplus funding to the academic sectors struggling the most.
 
-## Expanding the Oxlint configuration
+📄 AI OCR Invoice Scanner: Automatically digitizes physical vendor receipts to extract liabilities, matching them against real-time department budgets to prevent overdrafts.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+💳 Unified Student Portals: Provides families with a beautiful interface to view fee ledgers, pay instantly via UPI QR codes, and generate dynamic PDF receipts.
+
+💼 Payroll & Tax Simulator: Allows administrators to manage staff payroll while giving teachers access to real-time take-home salary modeling using dynamic tax slab calculations.
+
+🛠️ Built With
+Frontend: React (Vite), Tailwind CSS, Recharts
+
+Backend & Database: Supabase (PostgreSQL)
+
+AI Integration: Groq API
+
+Utilities: html2pdf (Dynamic PDF Generation), QRCodeSVG (UPI Payments)
