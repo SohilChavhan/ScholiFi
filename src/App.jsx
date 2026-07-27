@@ -236,7 +236,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto relative">
-        <header className="bg-white shadow-sm px-8 py-6 sticky top-0 z-0">
+        <header className="bg-white shadow-sm px-8 py-6 sticky top-0 z-40">
           <h2 className="text-2xl font-bold text-[#2D4A3E] capitalize">{activeTab.replace('-', ' ')}</h2>
         </header>
 
@@ -1590,8 +1590,8 @@ function ProfessorDashboard({ user, financeData, requests, salaries }) {
                       {/* Step 1: Pending */}
                       <div className="relative z-10 flex flex-col items-center">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${currentStep >= 1
-                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]'
-                            : 'bg-white text-slate-400 border-slate-200'
+                          ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]'
+                          : 'bg-white text-slate-400 border-slate-200'
                           }`}>
                           1
                         </div>
@@ -1603,8 +1603,8 @@ function ProfessorDashboard({ user, financeData, requests, salaries }) {
                       {/* Step 2: Approved */}
                       <div className="relative z-10 flex flex-col items-center">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${currentStep >= 2
-                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]'
-                            : 'bg-white text-slate-400 border-slate-200'
+                          ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]'
+                          : 'bg-white text-slate-400 border-slate-200'
                           }`}>
                           2
                         </div>
@@ -1616,8 +1616,8 @@ function ProfessorDashboard({ user, financeData, requests, salaries }) {
                       {/* Step 3: Paid & Ordered */}
                       <div className="relative z-10 flex flex-col items-center">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${currentStep >= 3
-                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]'
-                            : 'bg-white text-slate-400 border-slate-200'
+                          ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]'
+                          : 'bg-white text-slate-400 border-slate-200'
                           }`}>
                           3
                         </div>
