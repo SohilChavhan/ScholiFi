@@ -1013,16 +1013,14 @@ function VendorPortalView({ user, vendorProducts, setVendorProducts, requests, s
 
   return (
     <div className="space-y-6 relative">
-      721 |
-      722 |       {/* ================================================== */}
-      723 |       {/* REPLACE YOUR OLD RETURN HEADER WITH THIS:          */}
-      724 |       <VendorLiabilityModal user={user} requests={requests} setRequests={setRequests} />
-      725 |       {user.role === 'Vendor' && <VendorAuctionHouse user={user} requests={requests} vendorProducts={vendorProducts} />} {/* <-- ADD PROP HERE */}
-      726 |       {/* ================================================== */}
-      727 |
-      728 |       {user.role === 'Vendor' && (
-        729 | <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          730 |           <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Add New Catalog Item</h3>
+
+      {/* Restored Modal and Auction House properly */}
+      <VendorLiabilityModal user={user} requests={requests} setRequests={setRequests} />
+      {user.role === 'Vendor' && <VendorAuctionHouse user={user} requests={requests} vendorProducts={vendorProducts} />}
+
+      {user.role === 'Vendor' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h3 className="text-lg font-bold text-[#2D4A3E] mb-4">Add New Catalog Item</h3>
           <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
             {/* --- UPDATED: Category Dropdown with Custom Option --- */}
             <select
@@ -1484,7 +1482,7 @@ function ProfessorDashboard({ user, financeData, requests, salaries }) {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
-      
+
       {/* 1. Isolated Department Tracker */}
       <div className="bg-[#2D4A3E] text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
         {/* Decorative background elements */}
@@ -1584,18 +1582,17 @@ function ProfessorDashboard({ user, financeData, requests, salaries }) {
                       {/* Background connecting line */}
                       <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-slate-200 z-0 rounded-full" />
                       {/* Active connecting line */}
-                      <div 
-                        className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-[#2D4A3E] z-0 rounded-full transition-all duration-500" 
+                      <div
+                        className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-[#2D4A3E] z-0 rounded-full transition-all duration-500"
                         style={{ width: `${currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%'}` }}
                       />
 
                       {/* Step 1: Pending */}
                       <div className="relative z-10 flex flex-col items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${
-                          currentStep >= 1 
-                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]' 
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${currentStep >= 1
+                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]'
                             : 'bg-white text-slate-400 border-slate-200'
-                        }`}>
+                          }`}>
                           1
                         </div>
                         <span className={`text-[10px] md:text-xs font-bold mt-2 ${currentStep >= 1 ? 'text-[#2D4A3E]' : 'text-slate-400'}`}>
@@ -1605,11 +1602,10 @@ function ProfessorDashboard({ user, financeData, requests, salaries }) {
 
                       {/* Step 2: Approved */}
                       <div className="relative z-10 flex flex-col items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${
-                          currentStep >= 2 
-                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]' 
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${currentStep >= 2
+                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]'
                             : 'bg-white text-slate-400 border-slate-200'
-                        }`}>
+                          }`}>
                           2
                         </div>
                         <span className={`text-[10px] md:text-xs font-bold mt-2 ${currentStep >= 2 ? 'text-[#2D4A3E]' : 'text-slate-400'}`}>
@@ -1619,11 +1615,10 @@ function ProfessorDashboard({ user, financeData, requests, salaries }) {
 
                       {/* Step 3: Paid & Ordered */}
                       <div className="relative z-10 flex flex-col items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${
-                          currentStep >= 3 
-                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]' 
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 shadow-sm transition-all duration-300 ${currentStep >= 3
+                            ? 'bg-[#2D4A3E] text-white border-[#2D4A3E]'
                             : 'bg-white text-slate-400 border-slate-200'
-                        }`}>
+                          }`}>
                           3
                         </div>
                         <span className={`text-[10px] md:text-xs font-bold mt-2 ${currentStep >= 3 ? 'text-[#2D4A3E]' : 'text-slate-400'}`}>
@@ -2251,7 +2246,7 @@ function ScannerView({ user, financeData, setFinanceData, requests, setRequests,
 
       if (mockInvoice.isVendorInvoice) {
         // Update the existing request in the database
-        await supabase.from('budget_requests').update({ 
+        await supabase.from('budget_requests').update({
           status: 'Paid & Ordered',
           verified_cost: verifiedCost
         }).eq('id', mockInvoice.id);
@@ -2281,7 +2276,7 @@ function ScannerView({ user, financeData, setFinanceData, requests, setRequests,
         };
 
         const { data, error } = await supabase.from('budget_requests').insert([newRequestPayload]).select();
-        
+
         // Update local state
         const created = (data && data.length > 0) ? data[0] : { ...newRequestPayload, id: `local-${Math.random()}` };
         setRequests([...requests, {

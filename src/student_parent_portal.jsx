@@ -26,7 +26,7 @@ export default function StudentParentPortal({ user, onLogout }) {
             parentMobile: match.parentMobile || '+91 99999 88888'
           };
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const stdId = id.toUpperCase();
@@ -151,7 +151,6 @@ export default function StudentParentPortal({ user, onLogout }) {
     setPaymentConfirmed(true);
 
     if (payNowItem) {
-      // Mock Data, should be removed - Simulation of payment completion
       const now = new Date();
       const formattedDate = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
       const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -159,11 +158,16 @@ export default function StudentParentPortal({ user, onLogout }) {
       const newTxnId = `#TXN-${now.getFullYear()}-${randomNum}`;
       const newReceiptNo = `REC-${now.getFullYear()}-${randomNum}`;
 
+      // --- NEW FIX: Correctly parse and add the base fee + penalty ---
+      const rawSubtotal = parseFloat(payNowItem.amountToBePaid.replace(/[^\d.]/g, '')) || 0;
+      const rawPenalty = payNowItem.penalty !== 'NA' ? (parseFloat(payNowItem.penalty.replace(/[^\d.]/g, '')) || 100) : 0;
+      const finalTotal = rawSubtotal + rawPenalty;
+
       const newHistoryItem = {
         id: String(Date.now()),
         academicYear: payNowItem.academicYear,
         feeCategory: payNowItem.feeCategory.split('(')[0].trim(),
-        amountPaid: payNowItem.amountToBePaid,
+        amountPaid: `₹ ${finalTotal.toFixed(2)}`, // Uses the correctly calculated total
         paymentDateTime: `${formattedDate} • ${formattedTime}`,
         transactionId: newTxnId,
         receiptNo: newReceiptNo,
@@ -171,8 +175,8 @@ export default function StudentParentPortal({ user, onLogout }) {
         paymentMethod: 'UPI',
         paymentType: payNowItem.feeCategory.includes('Installment') ? 'Installment' : 'Full',
         description: payNowItem.feeCategory,
-        subtotal: payNowItem.amountToBePaid.replace('₹ ', ''),
-        lateFine: payNowItem.penalty !== 'NA' ? '100.00' : '0.00',
+        subtotal: rawSubtotal.toFixed(2),
+        lateFine: rawPenalty.toFixed(2),
         discount: '0.00',
         words: 'Fee Payment Processed Successfully.',
       };
@@ -359,13 +363,12 @@ export default function StudentParentPortal({ user, onLogout }) {
                             </td>
                             <td className="py-4 px-6 text-slate-500 whitespace-nowrap">{item.dueDate}</td>
                             <td className="py-4 px-6 text-center">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                                item.status === 'Due Soon'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : item.status === 'Overdue'
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.status === 'Due Soon'
+                                ? 'bg-amber-100 text-amber-800'
+                                : item.status === 'Overdue'
                                   ? 'bg-rose-100 text-rose-800'
                                   : 'bg-emerald-100 text-emerald-800'
-                              }`}>
+                                }`}>
                                 {item.status}
                               </span>
                             </td>
@@ -577,72 +580,80 @@ export default function StudentParentPortal({ user, onLogout }) {
       )}
 
       {/* QR Payment Checkout Modal */}
-      {payNowItem && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl w-[400px] relative animate-in zoom-in-95 duration-200">
+      {payNowItem && (() => {
+        // --- NEW FIX: Calculate total for the QR Code and Modal display ---
+        const rawSubtotal = parseFloat(payNowItem.amountToBePaid.replace(/[^\d.]/g, '')) || 0;
+        const rawPenalty = payNowItem.penalty !== 'NA' ? (parseFloat(payNowItem.penalty.replace(/[^\d.]/g, '')) || 100) : 0;
+        const checkoutTotal = rawSubtotal + rawPenalty;
 
-            <button onClick={() => { setPayNowItem(null); setPaymentConfirmed(false); }} className="absolute top-4 right-4 text-slate-400 hover:text-slate-800">
-              <X className="w-6 h-6" />
-            </button>
+        return (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white p-8 rounded-3xl shadow-2xl w-[400px] relative animate-in zoom-in-95 duration-200">
 
-            {!paymentConfirmed ? (
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-[#2D4A3E] mb-1">Fee Checkout</h2>
-                <p className="text-slate-500 mb-6">Scan to pay with any UPI App</p>
+              <button onClick={() => { setPayNowItem(null); setPaymentConfirmed(false); }} className="absolute top-4 right-4 text-slate-400 hover:text-slate-800">
+                <X className="w-6 h-6" />
+              </button>
 
-                <div className="bg-slate-50 p-6 rounded-2xl inline-block border border-slate-200 shadow-inner mb-6">
-                  {/* Mock Data, subjective */}
-                  <QRCodeSVG
-                    value={`upi://pay?pa=7770011695@ybl&pn=ScholiFi%20School&am=${payNowItem.amountToBePaid.replace(/[^\d.]/g, '')}&cu=INR`}
-                    size={200}
-                    level={"H"}
-                    fgColor="#2D4A3E"
-                  />
-                </div>
+              {!paymentConfirmed ? (
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-[#2D4A3E] mb-1">Fee Checkout</h2>
+                  <p className="text-slate-500 mb-6">Scan to pay with any UPI App</p>
 
-                <div className="space-y-2 text-left bg-[#FBF9F5] p-4 rounded-xl border border-[#D4AF37]/30 mb-6">
-                  <div className="flex justify-between text-sm text-slate-600">
-                    <span>Fee Category:</span>
-                    <span className="font-medium text-slate-800">{payNowItem.feeCategory}</span>
+                  <div className="bg-slate-50 p-6 rounded-2xl inline-block border border-slate-200 shadow-inner mb-6">
+                    {/* --- UPDATED: Pass the calculated checkoutTotal to the QR Code --- */}
+                    <QRCodeSVG
+                      value={`upi://pay?pa=7770011695@ybl&pn=ScholiFi%20School&am=${checkoutTotal}&cu=INR`}
+                      size={200}
+                      level={"H"}
+                      fgColor="#2D4A3E"
+                    />
                   </div>
-                  <div className="flex justify-between text-sm text-slate-600">
-                    <span>Academic Year:</span>
-                    <span className="font-medium text-slate-800">{payNowItem.academicYear}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-slate-600">
-                    <span>Due Date:</span>
-                    <span className="font-medium text-slate-800">{payNowItem.dueDate}</span>
-                  </div>
-                  {payNowItem.penalty !== 'NA' && (
-                    <div className="flex justify-between text-sm text-rose-600">
-                      <span>Penalty:</span>
-                      <span className="font-semibold">{payNowItem.penalty}</span>
+
+                  <div className="space-y-2 text-left bg-[#FBF9F5] p-4 rounded-xl border border-[#D4AF37]/30 mb-6">
+                    <div className="flex justify-between text-sm text-slate-600">
+                      <span>Fee Category:</span>
+                      <span className="font-medium text-slate-800">{payNowItem.feeCategory}</span>
                     </div>
-                  )}
-                  <div className="w-full h-px bg-slate-200 my-2" />
-                  <div className="flex justify-between text-lg font-bold text-[#2D4A3E]">
-                    <span>Total:</span>
-                    <span>{payNowItem.amountToBePaid}</span>
+                    <div className="flex justify-between text-sm text-slate-600">
+                      <span>Academic Year:</span>
+                      <span className="font-medium text-slate-800">{payNowItem.academicYear}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-slate-600">
+                      <span>Due Date:</span>
+                      <span className="font-medium text-slate-800">{payNowItem.dueDate}</span>
+                    </div>
+                    {payNowItem.penalty !== 'NA' && (
+                      <div className="flex justify-between text-sm text-rose-600">
+                        <span>Penalty:</span>
+                        <span className="font-semibold">{payNowItem.penalty}</span>
+                      </div>
+                    )}
+                    <div className="w-full h-px bg-slate-200 my-2" />
+                    <div className="flex justify-between text-lg font-bold text-[#2D4A3E]">
+                      <span>Total:</span>
+                      {/* --- UPDATED: Display the calculated checkoutTotal --- */}
+                      <span>₹ {checkoutTotal.toFixed(2)}</span>
+                    </div>
                   </div>
-                </div>
 
-                <button
-                  onClick={confirmFeePayment}
-                  className="w-full bg-[#D4AF37] text-white py-3 rounded-xl font-medium hover:bg-yellow-600 transition-colors shadow-md"
-                >
-                  I have completed the payment
-                </button>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4 animate-in zoom-in-50 duration-300" />
-                <h2 className="text-2xl font-bold text-[#2D4A3E] mb-2">Payment Recorded!</h2>
-                <p className="text-slate-500 text-sm">Your payment is being verified. This window will close automatically.</p>
-              </div>
-            )}
+                  <button
+                    onClick={confirmFeePayment}
+                    className="w-full bg-[#D4AF37] text-white py-3 rounded-xl font-medium hover:bg-yellow-600 transition-colors shadow-md"
+                  >
+                    I have completed the payment
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4 animate-in zoom-in-50 duration-300" />
+                  <h2 className="text-2xl font-bold text-[#2D4A3E] mb-2">Payment Recorded!</h2>
+                  <p className="text-slate-500 text-sm">Your payment is being verified. This window will close automatically.</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
