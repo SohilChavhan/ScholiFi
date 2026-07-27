@@ -251,7 +251,7 @@ export default function StudentParentPortal({ user, onLogout }) {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto relative">
-        <header className="bg-white shadow-sm px-8 py-6 sticky top-0 z-0">
+        <header className="bg-white shadow-sm px-8 py-6 sticky top-0 z-40">
           <h2 className="text-2xl font-bold text-[#2D4A3E] capitalize">
             {activeTab.replace('-', ' ')}
           </h2>

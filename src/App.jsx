@@ -186,7 +186,7 @@ export default function App() {
   }
 
   if (user.role === 'Student/Parent') {
-    return <StudentParentPortal user={user} onLogout={() => setUser(null)} />;
+    return <StudentParentPortal user={user} onLogout={() => { setUser(null); setActiveTab('dashboard'); }} />;
   }
 
   const menuItems = [
@@ -228,7 +228,7 @@ export default function App() {
             <p className="font-bold text-[#D4AF37]">{user.role}</p>
             <p className="text-xs">{user.id}</p>
           </div>
-          <button onClick={() => setUser(null)} className="hover:text-white">
+          <button onClick={() => { setUser(null); setActiveTab('dashboard'); }} className="hover:text-white">
             <LogOut className="w-5 h-5" />
           </button>
         </div>
