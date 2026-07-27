@@ -4002,7 +4002,9 @@ function LandingPageView({ onLogin, showLoginModal, setShowLoginModal }) {
             <p className="text-slate-400">All the tools you need to run, track, and optimize your school operations seamlessly.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Changed to a 3-column grid to perfectly fit 9 feature cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
             {/* 1. Fee Administration */}
             <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
               <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
@@ -4036,7 +4038,18 @@ function LandingPageView({ onLogin, showLoginModal, setShowLoginModal }) {
               </p>
             </div>
 
-            {/* 4. Staff Payroll */}
+            {/* 4. Smart Surplus Allocator */}
+            <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
+              <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
+                <TrendingUp className="w-6 h-6 text-[#D4AF37]" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Smart Surplus Allocator</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                An algorithmic engine that evaluates department burn rates and automatically distributes surplus funds to sectors struggling the most.
+              </p>
+            </div>
+
+            {/* 5. Staff Payroll */}
             <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
               <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
                 <Wallet className="w-6 h-6 text-[#D4AF37]" />
@@ -4047,18 +4060,18 @@ function LandingPageView({ onLogin, showLoginModal, setShowLoginModal }) {
               </p>
             </div>
 
-            {/* 5. AI Budget Requests */}
+            {/* 6. AI Budget Requests */}
             <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
               <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
                 <Sparkles className="w-6 h-6 text-[#D4AF37]" />
               </div>
               <h3 className="text-lg font-bold text-white">AI Budget Requests</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Professors can generate professional Requests for Proposals (RFPs) instantly using integrated AI models.
+                Professors can generate professional Requests for Proposals (RFPs) instantly using integrated LLM AI models.
               </p>
             </div>
 
-            {/* 6. Finance Analyzer */}
+            {/* 7. Finance Analyzer */}
             <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
               <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
                 <ChartIcon className="w-6 h-6 text-[#D4AF37]" />
@@ -4069,7 +4082,7 @@ function LandingPageView({ onLogin, showLoginModal, setShowLoginModal }) {
               </p>
             </div>
 
-            {/* 7. Vendor E-Commerce Hub */}
+            {/* 8. Vendor Portal */}
             <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
               <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
                 <Store className="w-6 h-6 text-[#D4AF37]" />
@@ -4080,7 +4093,7 @@ function LandingPageView({ onLogin, showLoginModal, setShowLoginModal }) {
               </p>
             </div>
 
-            {/* 8. Student & Parent Portals */}
+            {/* 9. Student Portals */}
             <div className="bg-[#162820]/40 p-8 rounded-2xl border border-white/5 hover:border-[#D4AF37]/20 transition-all group space-y-4">
               <div className="bg-[#D4AF37]/10 p-3 rounded-xl w-fit group-hover:scale-110 transition-transform">
                 <Users className="w-6 h-6 text-[#D4AF37]" />
@@ -4090,6 +4103,7 @@ function LandingPageView({ onLogin, showLoginModal, setShowLoginModal }) {
                 Provide families with a beautiful interface to view fee ledgers, generate automated PDF receipts, and pay via UPI QR codes.
               </p>
             </div>
+
           </div>
         </div>
       </section>
